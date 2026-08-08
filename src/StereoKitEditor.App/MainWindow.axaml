@@ -345,12 +345,12 @@
 
               <Border Padding="10" Background="#1B1E22" BorderBrush="#353A40" BorderThickness="1" CornerRadius="3">
                 <StackPanel Spacing="6">
-                  <TextBlock FontWeight="SemiBold" Text="Primitive Mesh Renderer" />
+                  <TextBlock FontWeight="SemiBold" Text="Authoring Summary" />
                   <Grid ColumnDefinitions="82,*">
-                    <TextBlock VerticalAlignment="Center" Classes="muted" Text="Primitive" />
+                    <TextBlock VerticalAlignment="Center" Classes="muted" Text="Content" />
                     <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding SelectedKind}" />
                   </Grid>
-                  <TextBlock Classes="muted" FontSize="10" Text="Project components below provide typed controls, searchable references, and schema diagnostics." />
+                  <TextBlock Classes="muted" FontSize="10" Text="Built-in and project components below provide typed controls, searchable references, and schema diagnostics." />
                 </StackPanel>
               </Border>
 

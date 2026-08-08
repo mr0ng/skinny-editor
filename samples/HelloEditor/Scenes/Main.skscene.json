@@ -15,9 +15,9 @@
           "enabled": true,
           "data": {
             "position": [
-              -0.22037702798843384,
-              0.12959352135658264,
-              -0.5457110345363617
+              -0.44,
+              0.08,
+              -0.72
             ],
             "rotation": [
               0,
@@ -26,9 +26,9 @@
               1
             ],
             "scale": [
-              1,
-              1,
-              1
+              0.8,
+              0.8,
+              0.8
             ]
           }
         },
@@ -39,7 +39,7 @@
           "enabled": true,
           "data": {
             "primitive": "Cube",
-            "materialAssetId": "70000000-0000-0000-0000-000000000081",
+            "materialAssetId": null,
             "baseColorTextureOverrideId": null,
             "color": [
               0.2,
@@ -56,17 +56,12 @@
           "schemaVersion": 2,
           "enabled": true,
           "data": {
-            "color": [
-              0.33725490196078434,
-              0.7215686274509804,
-              0.03137254901960784,
-              1
-            ],
-            "size": 0.12,
-            "verticalOffset": 0.18,
+            "color": [0.08, 0.78, 0.68, 1],
+            "size": 0.065,
+            "verticalOffset": 0.14,
             "visible": true,
-            "shape": "Cube",
-            "label": "Marker"
+            "shape": "Sphere",
+            "label": "Project Marker"
           }
         }
       ],
@@ -84,9 +79,9 @@
           "enabled": true,
           "data": {
             "position": [
-              0.3,
-              0.2872303456068039,
-              -0.7
+              -0.15,
+              0.12,
+              -0.72
             ],
             "rotation": [
               0,
@@ -124,7 +119,7 @@
     },
     {
       "id": "70000000-0000-0000-0000-000000000001",
-      "name": "Phase 5 Title",
+      "name": "Showcase Title",
       "enabled": true,
       "components": [
         {
@@ -132,7 +127,7 @@
           "typeId": "stereokit.transform",
           "schemaVersion": 1,
           "enabled": true,
-          "data": { "position": [-0.32, 0.42, -0.72], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+          "data": { "position": [-0.58, 0.42, -0.74], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
         },
         {
           "id": "70000000-0000-0000-0000-000000000003",
@@ -140,20 +135,18 @@
           "schemaVersion": 1,
           "enabled": true,
           "data": {
-            "text": "SKinny visual content",
+            "text": "Create spatial experiences visually",
             "textStyleAssetId": "70000000-0000-0000-0000-000000000082",
             "fontAssetId": null,
             "characterHeight": 0.035,
-            "color": [1, 1, 1, 1],
-            "bounds": [0.6, 0.1],
+            "color": [0.42, 0.82, 1, 1],
+            "bounds": [0.72, 0.1],
             "fit": "Wrap",
             "horizontalAlignment": "Left",
             "verticalAlignment": "Top",
             "pivot": [0, 0],
             "billboard": "None",
             "surfacePreset": "WorldTransparent",
-            "uvScale": [1, 1],
-            "uvOffset": [0, 0],
             "uvScale": [1, 1],
             "uvOffset": [0, 0],
             "visible": true
@@ -164,7 +157,7 @@
     },
     {
       "id": "70000000-0000-0000-0000-000000000010",
-      "name": "Interactive Status Panel",
+      "name": "Spatial Controls",
       "enabled": true,
       "components": [
         {
@@ -172,7 +165,7 @@
           "typeId": "stereokit.transform",
           "schemaVersion": 1,
           "enabled": true,
-          "data": { "position": [0.45, 0.05, -0.75], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+          "data": { "position": [0.43, 0.07, -0.76], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
         },
         {
           "id": "70000000-0000-0000-0000-000000000012",
@@ -180,12 +173,12 @@
           "schemaVersion": 1,
           "enabled": true,
           "data": {
-            "title": "Project Controls",
+            "title": "Spatial Controls",
             "kind": "Window",
             "size": [0.48, 0.52],
             "autoWidth": false,
             "autoHeight": false,
-            "movableInGame": true,
+            "movableInGame": false,
             "farInteraction": true,
             "visible": true
           }
@@ -199,7 +192,7 @@
           "components": [
             { "id": "70000000-0000-0000-0000-000000000021", "typeId": "stereokit.transform", "schemaVersion": 1, "enabled": true, "data": { "position": [0,0,0], "rotation": [0,0,0,1], "scale": [1,1,1] } },
             { "id": "70000000-0000-0000-0000-000000000022", "typeId": "stereokit.ui-rect", "schemaVersion": 1, "enabled": true, "data": { "layoutMode": "Flow", "preferredSize": [0.4,0.065], "minimumSize": [0,0], "margin": [0,0,0,0.008], "padding": [0,0,0,0], "sameLine": false, "lineBreak": true, "anchor": "TopLeft", "pivot": [0,0], "position": [0,0], "size": [0.4,0.065], "stretchWidth": true, "stretchHeight": false, "clip": false } },
-            { "id": "70000000-0000-0000-0000-000000000023", "typeId": "stereokit.ui-text", "schemaVersion": 1, "enabled": true, "data": { "text": "Use Edit UI to select elements, then Preview UI to exercise design values.", "textStyleAssetId": null, "alignment": "Left", "wrap": true, "color": [1,1,1,1] } }
+            { "id": "70000000-0000-0000-0000-000000000023", "typeId": "stereokit.ui-text", "schemaVersion": 1, "enabled": true, "data": { "text": "Edit UI selects elements. Preview UI enables interaction.", "textStyleAssetId": null, "alignment": "Left", "wrap": true, "color": [1,1,1,1] } }
           ],
           "children": []
         },
@@ -270,7 +263,7 @@
           "typeId": "stereokit.transform",
           "schemaVersion": 1,
           "enabled": true,
-          "data": { "position": [-0.48, -0.18, -0.72], "rotation": [0, 0, 0, 1], "scale": [1.5, 1, 1] }
+          "data": { "position": [-0.48, -0.16, -0.74], "rotation": [0, 0, 0, 1], "scale": [1.6, 1, 1] }
         },
         {
           "id": "70000000-0000-0000-0000-000000000072",
@@ -281,7 +274,7 @@
             "primitive": "Quad",
             "materialAssetId": "70000000-0000-0000-0000-000000000081",
             "baseColorTextureOverrideId": null,
-            "color": [0.12, 0.62, 0.52, 1],
+            "color": [1, 1, 1, 1],
             "uvScale": [1, 1],
             "uvOffset": [0, 0],
             "visible": true
@@ -300,7 +293,7 @@
           "typeId": "stereokit.transform",
           "schemaVersion": 1,
           "enabled": true,
-          "data": { "position": [0.06, -0.28, -0.74], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+          "data": { "position": [-0.1, -0.16, -0.73], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
         },
         {
           "id": "70000000-0000-0000-0000-000000000092",
@@ -309,7 +302,7 @@
           "enabled": true,
           "data": {
             "textureAssetId": "70000000-0000-0000-0000-000000000080",
-            "size": [0.24, 0.24],
+            "size": [0.2, 0.2],
             "sizingMode": "PreserveAspect",
             "pixelsPerMeter": 1000,
             "pivot": [0.5, 0.5],
@@ -318,6 +311,35 @@
             "billboard": "None",
             "surfacePreset": "WorldTransparent",
             "visible": true
+          }
+        }
+      ],
+      "children": []
+    },
+    {
+      "id": "70000000-0000-0000-0000-000000000100",
+      "name": "Axis Sculpture",
+      "enabled": true,
+      "components": [
+        {
+          "id": "70000000-0000-0000-0000-000000000101",
+          "typeId": "stereokit.transform",
+          "schemaVersion": 1,
+          "enabled": true,
+          "data": { "position": [0.08, 0.14, -0.73], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000102",
+          "typeId": "stereokit.model-renderer",
+          "schemaVersion": 1,
+          "enabled": true,
+          "data": {
+            "assetId": "70000000-0000-0000-0000-000000000083",
+            "materialAssetId": null,
+            "materialOverrides": {},
+            "visible": true,
+            "fitToBounds": true,
+            "maximumSize": 0.2
           }
         }
       ],

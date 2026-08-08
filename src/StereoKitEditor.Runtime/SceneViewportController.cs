@@ -491,6 +491,15 @@ internal sealed class SceneViewportController(
             return false;
         }
 
+        // Spatial UI elements have purpose-built layout/anchor handles. A
+        // second world-transform gizmo at the same point is misleading and
+        // visually obscures those controls.
+        if (entity.Components.UiRect is not null)
+        {
+            _drag = null;
+            return false;
+        }
+
         var targets = CaptureTransformTargets(scene, selectedEntityId, selectedEntityIds);
         if (targets.Count == 0)
         {
@@ -1563,11 +1572,28 @@ internal sealed class SceneViewportController(
             return;
         }
 
+        EditorPickBounds? bounds;
+        var distanceMultiplier = 2.1;
+        if (entity.Components.UiRect is not null
+            && entityId is { } uiEntityId
+            && TryResolveUiFrameTarget(scene, uiEntityId, out var panelWorld, out var uiFrameBounds))
+        {
+            // UI children are positioned by the panel layout engine rather than
+            // by their authored Transform. Frame the element's calculated center
+            // while keeping its owning panel in view.
+            world = panelWorld;
+            bounds = uiFrameBounds;
+            distanceMultiplier = 1.25;
+        }
+        else
+        {
+            bounds = localBounds(entity);
+        }
+
         var worldScale = world.Scale;
         var largestWorldScale = MathF.Max(
             MathF.Abs(worldScale.x),
             MathF.Max(MathF.Abs(worldScale.y), MathF.Abs(worldScale.z)));
-        var bounds = localBounds(entity);
         var pivot = bounds is { } local
             ? world.Transform(new Vec3((float)local.CenterX, (float)local.CenterY, (float)local.CenterZ))
             : world.Translation;
@@ -1577,9 +1603,77 @@ internal sealed class SceneViewportController(
         _camera = _camera with
         {
             Pivot = FromVec3(pivot),
-            Distance = Math.Clamp(Math.Max(0.35, largestWorldScale * largestSize * 2.1), 0.05, 100),
+            Distance = Math.Clamp(
+                Math.Max(0.35, largestWorldScale * largestSize * distanceMultiplier),
+                0.05,
+                100),
         };
         PublishCamera(force: true);
+    }
+
+    internal static bool TryResolveUiFrameTarget(
+        SceneDocument scene,
+        Guid entityId,
+        out Matrix panelWorld,
+        out EditorPickBounds bounds)
+    {
+        foreach (var root in scene.Roots)
+        {
+            if (TryResolveUiFrameTarget(root, entityId, Matrix.Identity, out panelWorld, out bounds))
+            {
+                return true;
+            }
+        }
+
+        panelWorld = Matrix.Identity;
+        bounds = default;
+        return false;
+    }
+
+    private static bool TryResolveUiFrameTarget(
+        SceneEntity candidate,
+        Guid entityId,
+        Matrix parentWorld,
+        out Matrix panelWorld,
+        out EditorPickBounds bounds)
+    {
+        var transform = candidate.Components.Transform;
+        var world = Matrix.TRS(
+            ToVec3(transform.Position),
+            ToQuat(transform.Rotation),
+            ToVec3(transform.Scale)) * parentWorld;
+        if (candidate.Components.UiPanel is { Visible: true } panel)
+        {
+            var panelSize = new Vector2Value(
+                Math.Max(0.08, panel.Size.X),
+                Math.Max(0.06, panel.Size.Y));
+            var layout = SpatialUiLayoutEngine.Calculate(candidate, panelSize)
+                .FirstOrDefault(value => value.Entity.Id == entityId);
+            if (layout is not null)
+            {
+                panelWorld = world;
+                bounds = new EditorPickBounds(
+                    layout.Center.x,
+                    layout.Center.y,
+                    layout.Center.z,
+                    panelSize.X,
+                    panelSize.Y,
+                    0.012);
+                return true;
+            }
+        }
+
+        foreach (var child in candidate.Children)
+        {
+            if (TryResolveUiFrameTarget(child, entityId, world, out panelWorld, out bounds))
+            {
+                return true;
+            }
+        }
+
+        panelWorld = Matrix.Identity;
+        bounds = default;
+        return false;
     }
 
     private static IReadOnlyList<TransformTarget> CaptureTransformTargets(

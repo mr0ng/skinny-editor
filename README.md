@@ -1,93 +1,177 @@
-# SKinny Editor
+<p align="center">
+  <img src="assets/Brand/SKinny.Editor.icon.png" alt="SKinny Editor icon" width="128" />
+</p>
 
-**SKinny Editor** is a visual editor for StereoKit projects. This workspace contains the Windows preview, project SDK, automated verification, and product/architecture documentation.
+<h1 align="center">SKinny Editor</h1>
 
-Status: **Windows public preview under active development**.
+<p align="center">
+  <strong>A Windows-first visual authoring environment for StereoKit projects.</strong>
+</p>
 
-## Run from source
+<p align="center">
+  Build scenes, arrange spatial interfaces, manage visual assets, and test project behavior without leaving one focused desktop workspace.
+</p>
 
-Supported authoring platform: **Windows**. macOS and Linux editor support are intentionally out of scope for the current roadmap. Requirements are Windows and a .NET 8-or-newer SDK. From the repository root:
+<p align="center">
+  <img alt="Windows" src="https://img.shields.io/badge/platform-Windows-1f6feb?style=flat-square" />
+  <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8.0-512bd4?style=flat-square" />
+  <img alt="StereoKit" src="https://img.shields.io/badge/StereoKit-0.4_preview-00a6c7?style=flat-square" />
+  <img alt="Public preview" src="https://img.shields.io/badge/status-public_preview-f0a43c?style=flat-square" />
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-35a66f?style=flat-square" /></a>
+</p>
+
+<p align="center">
+  <a href="#get-started">Get started</a> ·
+  <a href="#what-works-today">Features</a> ·
+  <a href="docs/README.md">Documentation</a> ·
+  <a href="docs/roadmap/README.md">Roadmap</a>
+</p>
+
+![SKinny Editor showing a StereoKit scene, hierarchy, inspector, assets, and console](docs/media/readme/hero-editor.png)
+
+SKinny Editor brings the parts of a StereoKit project that benefit from direct manipulation into a visual scene editor. The application keeps authored data in readable, stable-ID scene files and runs project behavior through explicit adapters in isolated StereoKit processes.
+
+> [!NOTE]
+> SKinny Editor is an active **Windows public preview**. The visual-authoring foundation is usable today; installation, the Project Hub, and streamlined onboarding for existing projects are the next major product phase.
+
+## See the workflow
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/media/readme/scene-authoring.png" alt="Scene authoring with the hierarchy, transform tools, a selected GLB model, and its Inspector" />
+      <h3>Author the scene directly</h3>
+      <p>Create and organize entities, edit transforms, frame selections, and work with move, rotate, and scale tools in an embedded StereoKit Scene view. The Inspector combines built-in content with project-owned components.</p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/media/readme/spatial-ui-authoring.png" alt="Spatial UI authoring with a selected slider and layout controls" />
+      <h3>Compose spatial interfaces</h3>
+      <p>Build retained panels from text, images, toggles, sliders, inputs, buttons, spacers, and separators. Nested UI elements stay visible in the Hierarchy and expose dedicated layout, anchor, and resize controls.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/media/readme/asset-workflow.png" alt="Project asset browser showing a scene, template, GLB model, text style, texture, and material" />
+      <h3>Keep assets connected</h3>
+      <p>Import images and GLB models, create materials and text styles, organize folders, and keep references stable through asset moves. Thumbnails, dependency information, diagnostics, and protected deletion make the Project panel useful beyond simple file browsing.</p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/media/readme/play-mode.png" alt="SKinny Editor in Game mode with Play, Pause, Step, and Stop controls" />
+      <h3>Test without risking the edit scene</h3>
+      <p>Start an isolated Game session from a deep-cloned scene snapshot. Pause, advance one frame, stop, and inspect live runtime health while the always-on Scene process and authored document remain independent.</p>
+    </td>
+  </tr>
+</table>
+
+## What works today
+
+### Scene authoring
+
+- Hierarchical entities with child creation, multi-selection, inline rename, duplicate, delete, drag reparenting, and world-transform preservation.
+- Move, rotate, and scale gizmos with local/global axes, center/active pivots, snapping, parent-transform support, Ctrl-drag duplication, and atomic undo history.
+- Perspective and orthographic cameras, fly/orbit/pan navigation, normalized wheel zoom, arrow-key movement, an adaptive grid, fixed view presets, frame selection, and a clickable orientation widget.
+- Resizable and persisted Hierarchy, Scene, Inspector, Project, and Console panels in a dark Windows desktop shell.
+
+### Visual content and spatial UI
+
+- Cubes, spheres, textured quads, standalone images, text, GLB models, environment settings, and editor annotations.
+- Imported textures with color-space, usage, sampling, and addressing settings; reusable materials and text styles; stable sidecar identities and cached thumbnails.
+- Retained spatial panels and typed UI elements with flow or absolute layout, nesting, anchors, margins, padding, stretching, clipping, and edit/preview interaction modes.
+- Reusable scene-subtree templates that instantiate fresh entity and component IDs.
+
+### Project integration
+
+- Descriptor-driven build and launch of an independent StereoKit `.csproj`.
+- A versioned adapter contract for project-owned components, bindings, actions, custom Inspector presentations, runtime lifecycle, asset resolution, and pick geometry.
+- Stable-ID JSON scenes with unknown-component preservation, versioned migrations, atomic saves, deterministic reopen, undo/redo, and interrupted-session recovery.
+- Searchable assets, referenced-delete protection, recoverable project trash, recent projects, selectable runtime profiles, and workspace trust before project code runs.
+
+### Runtime isolation and reliability
+
+- Separate embedded Scene and Game hosts connected through a versioned duplex protocol.
+- Deep-cloned Play state, immutable build generations, stale-session reporting, pause/step/stop controls, and read-only runtime telemetry.
+- Heartbeats, unresponsive-process recovery, bounded Scene restart, structured diagnostics, redacted crash bundles, and Windows Job Object cleanup.
+- Verified self-contained `win-x64` portable packaging and paired preview SDK packages.
+
+## How a project connects
+
+```mermaid
+flowchart LR
+    Editor["SKinny Editor<br/>Hierarchy · Scene · Inspector · Assets"]
+    SceneFile["Authored scene<br/>stable IDs · readable JSON"]
+    Adapter["Project adapter<br/>components · bindings · actions"]
+    SceneHost["Isolated Scene host<br/>live authoring preview"]
+    GameHost["Isolated Game host<br/>cloned runtime state"]
+
+    Editor <--> SceneFile
+    Editor <--> Adapter
+    SceneFile --> SceneHost
+    Adapter --> SceneHost
+    SceneFile --> GameHost
+    Adapter --> GameHost
+```
+
+The adapter is the intentional boundary between a normal StereoKit project and the editor. Content explicitly represented in the scene and component catalog is authorable; arbitrary procedural objects created only by project code remain runtime-owned. This keeps onboarding non-destructive and lets a project continue to build and run normally outside SKinny Editor. See the [architecture overview](docs/architecture/overview.md) and [extension-authoring guide](docs/guides/extension-authoring.md) for the full model.
+
+## Get started
+
+### Requirements
+
+- Windows 10 or 11
+- .NET 8 SDK or newer
+- A GPU and driver supported by StereoKit
+
+### Build and launch the sample
 
 ```powershell
+git clone https://github.com/mr0ng/skinny-editor.git
+cd skinny-editor
 dotnet restore StereoKitEditor.sln
 dotnet build StereoKitEditor.sln
 dotnet test StereoKitEditor.sln --no-build
-dotnet run --project src/StereoKitEditor.App
+dotnet run --project src/StereoKitEditor.App -- --project samples/HelloEditor/HelloEditor.skproject.json
 ```
 
-The first run asks you to trust the sample workspace before MSBuild or project code runs. Review the exact project, working directory, command, and environment-variable names, then choose **Trust and Run** only if you trust this local source.
+The first launch asks you to trust the workspace before MSBuild or project code runs. Review the exact project, working directory, command, and environment-variable names, then choose **Trust and Run** only for source you trust.
 
-Open another descriptor from **Open Project** or **Recent**, with `--project <path>`, or by setting `SKINNY_PROJECT`. A portable build with no default project opens the project launcher instead of assuming the source sample is present.
+You can also open a descriptor from **Open Project** or **Recent**, pass `--project <path>`, or set `SKINNY_PROJECT`. A portable build with no default project opens the project launcher.
 
-The embedded **Scene** host starts with the editor. Click a primitive—or project component geometry that advertises pick bounds—to select its owning entity. Use `W`, `E`, and `R` for Move, Rotate, and Scale; drag axes, planes, rings, screen/free-rotation handles, enable per-tool snapping, and press `Escape` to cancel a gesture. Multi-object gestures and Ctrl-drag duplication commit as one undo entry. Scene also supports perspective/orthographic projection, an adaptive grid, center/active pivots, a clickable orientation widget, numeric drag feedback, right-mouse fly/look, Alt+left orbit, middle-mouse pan, normalized wheel zoom, `F` to frame selection, and Global/Local Move/Rotate axes. Up/Down move the Scene camera forward/backward, Left/Right move sideways, and holding Shift moves faster. In the sample, the teal Project Marker is a component of `Welcome Cube`, so selecting it highlights that existing Hierarchy entity rather than adding a separate row.
+### Essential shortcuts
 
-Press `F6` or **Play** to start an isolated **Game** host from a deep-cloned scene snapshot. `F7` pauses/resumes, `F8` steps one paused frame, and `Shift+F6` stops Game without stopping Scene. Per-view status reports the last rendered document revision.
+| Action | Shortcut |
+| --- | --- |
+| Move / Rotate / Scale | `W` / `E` / `R` |
+| Frame selection | `F` |
+| Start Game | `F6` |
+| Pause or resume | `F7` |
+| Step one paused frame | `F8` |
+| Stop Game | `Shift+F6` |
 
-The Windows preview currently provides:
+The [visual-authoring guide](docs/guides/visual-authoring.md) covers camera controls, transform gestures, selection, visual assets, and spatial UI in detail.
 
-- a dark Avalonia shell with persisted, resizable Hierarchy, Scene, Inspector, Project, and Console panels;
-- stable-ID scene/entity/component JSON with unknown-component preservation;
-- generic scene-format-2 project components with backed-up format-1 migration;
-- cube and sphere creation, selection, enable state, rename, position/rotation/scale editing;
-- command-based undo/redo plus atomic save and deterministic reopen;
-- a versioned, duplex named-pipe protocol;
-- descriptor-driven `dotnet build` and direct launch of an independent StereoKit `.csproj`;
-- a reusable `StereoKitEditor.Runtime` package with project-owned initialize/frame/shutdown callbacks;
-- a StereoKit-neutral adapter contract, explicit project component catalog, generated Add Component/Inspector UI, and per-instance runtime lifecycle;
-- a sample project-owned Marker editable in Scene and isolated Play;
-- immutable, content-addressed build generations and visibly stale Play sessions after relevant rebuilds;
-- workspace trust, current-user pipes, heartbeat/unresponsive state, structured diagnostics, bounded Scene crash recovery, and Windows Job Object cleanup;
-- an always-running, embedded StereoKit Scene host with a persistent fly/orbit/pan camera and frame-selection command;
-- distance-scaled axis/planar Move, axis/screen/free Rotate, and axis/uniform Scale tools with multi-selection, center/active pivots, snapping, parent-transform support, Ctrl-drag duplication, numeric feedback, and one undo commit per gesture;
-- perspective/orthographic Scene projection, adaptive grid, fixed view presets, and a native clickable orientation widget;
-- GLB import with stable sidecar GUIDs, content hashes, bounds/dependency diagnostics, cached thumbnails, and move-safe scene references;
-- a built-in Model Renderer with Project-panel creation, fit-to-bounds, model-aware picking, and accurate Frame Selection;
-- adapter contract 0.3 typed asset resolution and catalog-change reapplication for project-owned components;
-- a separately isolated, embedded Game host with Play, Pause, Step, and Stop;
-- deep-cloned Play state that is unaffected by later edit-document changes;
-- editor survival and child-process cleanup when either runtime stops or the editor closes.
-- child creation, multi-selection, inline rename, duplicate, delete, cycle-safe drag reparenting, and world-transform preservation;
-- searchable asset folders, rename/move with stable GUIDs, referenced-delete protection, and recoverable project trash;
-- recent-project opening, selectable Scene/Play profiles, persistent watcher/inspection preferences, and unsaved Save/Discard/Cancel protection;
-- revisioned change sets, schema-upgrade proposals, compatibility gating, redacted crash bundles, generation retention, and Wait/Restart/Stop hang recovery;
-- read-only live runtime inspection with FPS/frame time, memory, object/component counts, and selected-component states;
-- reusable scene-subtree templates with fresh IDs on every instantiation;
-- an optional Android ADB publish/install/launch deployment provider;
-- versioned preview NuGet packages and a verified self-contained `win-x64` ZIP distribution.
-- built-in environment and editor-annotation components plus safe declarative Slider/Multiline extension presentations.
-- debounced local scene recovery with startup restore/discard choice after an interrupted editing session.
-
-The Windows-only native input regression probe launches the sample Scene briefly, posts one standard wheel notch and one Up-arrow press, checks the reported camera state, and closes the runtime automatically:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-native-scene-input.ps1
-```
-
-Pass `-GlbPath <file.glb>` to the same probe to import a real model and verify that the isolated StereoKit runtime loads and draws it before shutting down.
-
-The native embedding bridge is Windows-specific by design. Other desktop platforms are deprioritized until after a successful Windows beta and a later demand review. The adapter, transform tools, GLB pipeline, revisioned synchronization, migrations, richer pickers, and recovery layer are implemented.
-
-## Package the preview
+## Package the Windows preview
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\package-windows.ps1
 ```
 
-This produces a portable self-contained editor, ZIP, SHA-256 checksum, and the four exactly paired project SDK packages under `artifacts/distribution`. See [installation and onboarding](docs/guides/installation-and-onboarding.md).
-
-## Architecture at a glance
-
-SKinny Editor uses a .NET desktop shell with separate StereoKit processes for the live Scene and isolated Play experiences. Projects expose authorable behavior through an explicit component catalog and runtime adapter. See the [architecture overview](docs/architecture/overview.md) for the process model, structured-authoring boundary, asset identity, and trust model.
+The packaging gate produces a self-contained editor, ZIP archive, SHA-256 checksum, and four paired project SDK packages under `artifacts/distribution`. See [installation and onboarding](docs/guides/installation-and-onboarding.md) for the current portable workflow and planned desktop integration.
 
 ## Documentation
 
-- [Documentation index](docs/README.md)
-- [Architecture overview](docs/architecture/overview.md)
-- [Installation and onboarding](docs/guides/installation-and-onboarding.md)
-- [Extension authoring](docs/guides/extension-authoring.md)
-- [Visual authoring guide](docs/guides/visual-authoring.md)
-- [Public roadmap](docs/roadmap/README.md)
+- [Documentation index](docs/README.md) — entry point for public technical and product documentation
+- [Architecture overview](docs/architecture/overview.md) — processes, authoring boundary, asset identity, and trust model
+- [Visual authoring guide](docs/guides/visual-authoring.md) — Scene controls, content, assets, and spatial UI
+- [Extension authoring](docs/guides/extension-authoring.md) — project adapters, components, bindings, and actions
+- [Installation and onboarding](docs/guides/installation-and-onboarding.md) — source launch, portable packaging, and project setup
+- [Public roadmap](docs/roadmap/README.md) — completed foundations and upcoming product phases
 
-## Current implementation frontier
+## Project status
 
-The portable Windows editor foundation and visual-content/spatial-UI implementation are complete. The automated gate covers large scenes and asset libraries, compatibility and migrations, clean SDK consumption, portable packaging, typed visual assets, isolated Scene/Play, and native input. Hardware-dependent DPI, GPU, device-loss, and hands-on viewport acceptance remain. Windows installation and project onboarding are the next major product phase; see the [public roadmap](docs/roadmap/README.md).
+The editor foundation, visual-content pipeline, spatial-UI vertical slice, isolated Scene/Game workflow, and Windows portable distribution are implemented. The next product phase focuses on a branded installer, desktop integration, a Project Hub, new-project generation, and non-destructive onboarding for existing StereoKit projects. Hardware-dependent DPI, GPU, device-loss, and hands-on viewport acceptance continue alongside that work.
+
+The native editor and embedding bridge are Windows-specific by design for the current roadmap. Other desktop platforms are intentionally deprioritized until after a successful Windows beta and demand review.
+
+## License
+
+SKinny Editor is available under the [MIT License](LICENSE).
