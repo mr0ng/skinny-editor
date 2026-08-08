@@ -1,24 +1,36 @@
 param(
     [string]$DistributionDirectory = "artifacts\distribution",
     [string]$RuntimeIdentifier = "win-x64",
-    [string]$Project = ""
+    [string]$Project = "",
+    [string]$Version = ""
 )
 
 $ErrorActionPreference = "Stop"
 $workspace = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+. (Join-Path $PSScriptRoot "release-common.ps1")
+$Version = Get-SKinnyReleaseVersion -RepositoryRoot $workspace -RequestedVersion $Version
 $distribution = [System.IO.Path]::GetFullPath((Join-Path $workspace $DistributionDirectory))
-$packageRoot = [System.IO.Path]::GetFullPath((Join-Path $distribution "SKinny-Editor-$RuntimeIdentifier"))
-$archive = [System.IO.Path]::GetFullPath((Join-Path $distribution "SKinny-Editor-$RuntimeIdentifier.zip"))
+$packageName = "SKinny-Editor-$Version-$RuntimeIdentifier"
+$packageRoot = [System.IO.Path]::GetFullPath((Join-Path $distribution $packageName))
+$archive = [System.IO.Path]::GetFullPath((Join-Path $distribution "$packageName.zip"))
 $checksum = "$archive.sha256"
-$executable = Join-Path $packageRoot "SKinny.Editor.exe"
+$verificationRoot = [System.IO.Path]::GetFullPath((Join-Path $workspace "artifacts\verification"))
+$extractedRoot = [System.IO.Path]::GetFullPath((Join-Path $verificationRoot $packageName))
+$verificationPrefix = $verificationRoot.TrimEnd(
+    [System.IO.Path]::DirectorySeparatorChar,
+    [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+if (-not $extractedRoot.StartsWith($verificationPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "The package extraction directory resolved outside the verification directory."
+}
+$executable = Join-Path $extractedRoot "SKinny.Editor.exe"
 $projectPath = if ([string]::IsNullOrWhiteSpace($Project)) {
-    Join-Path $packageRoot "examples\HelloEditor\HelloEditor.skproject.json"
+    Join-Path $extractedRoot "examples\HelloEditor\HelloEditor.skproject.json"
 }
 else {
     [System.IO.Path]::GetFullPath((Join-Path $workspace $Project))
 }
 
-foreach ($required in @($executable, $archive, $checksum, $projectPath)) {
+foreach ($required in @($packageRoot, $archive, $checksum)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Required packaged-smoke input was not found: $required"
     }
@@ -30,10 +42,22 @@ if (-not [string]::Equals($expectedHash, $actualHash, [System.StringComparison]:
     throw "The packaged ZIP checksum does not match its SHA-256 file."
 }
 
+if (Test-Path -LiteralPath $extractedRoot) {
+    Remove-Item -LiteralPath $extractedRoot -Recurse -Force
+}
+New-Item -ItemType Directory -Force -Path $extractedRoot | Out-Null
+Expand-Archive -LiteralPath $archive -DestinationPath $extractedRoot
+
+foreach ($required in @($executable, $projectPath, (Join-Path $extractedRoot "LICENSE"), (Join-Path $extractedRoot "THIRD-PARTY-NOTICES.md"))) {
+    if (-not (Test-Path -LiteralPath $required)) {
+        throw "Required extracted-package input was not found: $required"
+    }
+}
+
 function Test-Startup([string[]]$Arguments, [string]$Label) {
     $startParameters = @{
         FilePath = $executable
-        WorkingDirectory = $packageRoot
+        WorkingDirectory = $extractedRoot
         PassThru = $true
         WindowStyle = "Hidden"
     }

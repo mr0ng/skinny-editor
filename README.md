@@ -121,6 +121,16 @@ The adapter is the intentional boundary between a normal StereoKit project and t
 - .NET 8 SDK or newer
 - A GPU and driver supported by StereoKit
 
+### Download the public preview
+
+Download `SKinny-Editor-0.3.0-preview.1-win-x64.zip` and its SHA-256 checksum
+from [GitHub Releases](https://github.com/mr0ng/skinny-editor/releases). Extract
+the archive to a user-writable directory and run `SKinny.Editor.exe`.
+
+The executable is not code-signed yet, so Windows may display a trust or
+SmartScreen warning. The packaged editor is self-contained, but building a
+StereoKit project still requires the SDK and workloads used by that project.
+
 ### Build and launch the sample
 
 ```powershell
@@ -155,7 +165,10 @@ The [visual-authoring guide](docs/guides/visual-authoring.md) covers camera cont
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\package-windows.ps1
 ```
 
-The packaging gate produces a self-contained editor, ZIP archive, SHA-256 checksum, and four paired project SDK packages under `artifacts/distribution`. See [installation and onboarding](docs/guides/installation-and-onboarding.md) for the current portable workflow and planned desktop integration.
+The packaging gate produces a versioned self-contained editor, ZIP archive,
+SHA-256 checksum, license notices, and four paired project SDK packages under
+`artifacts/distribution`. See [installation and onboarding](docs/guides/installation-and-onboarding.md)
+for the current portable workflow and planned desktop integration.
 
 ## Documentation
 
@@ -165,6 +178,7 @@ The packaging gate produces a self-contained editor, ZIP archive, SHA-256 checks
 - [Extension authoring](docs/guides/extension-authoring.md) — project adapters, components, bindings, and actions
 - [Installation and onboarding](docs/guides/installation-and-onboarding.md) — source launch, portable packaging, and project setup
 - [Public roadmap](docs/roadmap/README.md) — completed foundations and upcoming product phases
+- [Changelog](CHANGELOG.md) — public release history and known limitations
 
 ## Project status
 
@@ -174,4 +188,5 @@ The current editor distribution and native embedding bridge target Windows. A fu
 
 ## License
 
-SKinny Editor is available under the [MIT License](LICENSE).
+SKinny Editor is available under the [MIT License](LICENSE). Redistributed
+components are documented in [third-party notices](THIRD-PARTY-NOTICES.md).

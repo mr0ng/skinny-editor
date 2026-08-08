@@ -5,7 +5,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>SKinny.Editor.Runtime</PackageId>
-    <Version>0.3.0-preview.1</Version>
     <Authors>SKinny Editor contributors</Authors>
     <Description>Isolated StereoKit Scene and Play runtime integration for SKinny Editor projects.</Description>
     <PackageTags>StereoKit;editor;runtime</PackageTags>

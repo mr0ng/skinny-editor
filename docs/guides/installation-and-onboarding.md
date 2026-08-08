@@ -6,13 +6,25 @@ This document describes what works in the current portable build. The next produ
 
 ## Install a packaged build
 
-Run the packaging command from a source checkout:
+Download `SKinny-Editor-0.3.0-preview.1-win-x64.zip` and its adjacent checksum
+from [GitHub Releases](https://github.com/mr0ng/skinny-editor/releases). Extract
+the ZIP to a user-writable directory and run `SKinny.Editor.exe`.
+
+The executable is not code-signed yet, so Windows may display a trust or
+SmartScreen warning. Verify that the archive came from the repository's
+release page and compare its SHA-256 hash when desired.
+
+To create the same package from a source checkout, run:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\package-windows.ps1
 ```
 
-The command produces a self-contained `win-x64` folder, a ZIP archive, a SHA-256 checksum, and the matching project SDK packages under `artifacts/distribution`. A packaged editor does not require the .NET desktop runtime, but building StereoKit projects still requires the SDK and workloads used by those projects.
+The command produces a versioned, self-contained `win-x64` folder, ZIP
+archive, SHA-256 checksum, license notices, and matching project SDK packages
+under `artifacts/distribution`. A packaged editor does not require the .NET
+desktop runtime, but building StereoKit projects still requires the SDK and
+workloads used by those projects.
 
 The package is a portable Windows preview, not a signed installer. Extract it to a user-writable directory and run `SKinny.Editor.exe`.
 

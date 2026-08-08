@@ -1,5 +1,14 @@
 <Project>
   <PropertyGroup>
+    <Version>0.3.0-preview.1</Version>
+    <AssemblyVersion>0.3.0.0</AssemblyVersion>
+    <FileVersion>0.3.0.0</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+    <Copyright>Copyright © 2026 Sean Ong</Copyright>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/mr0ng/skinny-editor</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

@@ -1,10 +1,13 @@
 [CmdletBinding()]
 param(
-    [string]$ReferenceProjectVerifier = $env:SKINNY_REFERENCE_PROJECT_VERIFIER
+    [string]$ReferenceProjectVerifier = $env:SKINNY_REFERENCE_PROJECT_VERIFIER,
+    [string]$Version = ""
 )
 
 $ErrorActionPreference = "Stop"
 $workspace = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+. (Join-Path $PSScriptRoot "release-common.ps1")
+$Version = Get-SKinnyReleaseVersion -RepositoryRoot $workspace -RequestedVersion $Version
 $solution = Join-Path $workspace "StereoKitEditor.sln"
 
 function Invoke-Checked([scriptblock]$Action, [string]$FailureMessage) {
@@ -27,13 +30,13 @@ Write-Host "[4/8] SDK packages"
 & (Join-Path $PSScriptRoot "package-sdk.ps1") -Configuration Release
 
 Write-Host "[5/8] Clean package consumer"
-& (Join-Path $PSScriptRoot "verify-package-consumer.ps1") -Configuration Release
+& (Join-Path $PSScriptRoot "verify-package-consumer.ps1") -Configuration Release -Version $Version
 
 Write-Host "[6/8] Windows distribution"
-& (Join-Path $PSScriptRoot "package-windows.ps1") -Configuration Release
+& (Join-Path $PSScriptRoot "package-windows.ps1") -Configuration Release -Version $Version
 
 Write-Host "[7/8] Packaged startup and checksum"
-& (Join-Path $PSScriptRoot "verify-packaged-editor.ps1")
+& (Join-Path $PSScriptRoot "verify-packaged-editor.ps1") -Version $Version
 
 Write-Host "[8/8] Reference-project integration"
 if ([string]::IsNullOrWhiteSpace($ReferenceProjectVerifier)) {

@@ -4,7 +4,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>SKinny.Editor.Adapter</PackageId>
-    <Version>0.3.0-preview.1</Version>
     <Authors>SKinny Editor contributors</Authors>
     <Description>StereoKit-neutral component and runtime adapter contracts for SKinny Editor projects.</Description>
     <PackageTags>StereoKit;editor;adapter</PackageTags>

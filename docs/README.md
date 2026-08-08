@@ -5,6 +5,11 @@ repository. It explains the product, supported workflows, architecture, and
 direction without exposing private reference projects or machine-specific
 planning notes.
 
+## Releases
+
+- [0.3.0-preview.1](releases/0.3.0-preview.1.md) — first public preview
+- [Changelog](../CHANGELOG.md) — release history and known limitations
+
 ## Architecture
 
 - [Architecture overview](architecture/overview.md) — process boundaries,

@@ -1,10 +1,12 @@
 param(
     [string]$Configuration = "Release",
-    [string]$Version = "0.3.0-preview.1"
+    [string]$Version = ""
 )
 
 $ErrorActionPreference = "Stop"
 $workspace = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+. (Join-Path $PSScriptRoot "release-common.ps1")
+$Version = Get-SKinnyReleaseVersion -RepositoryRoot $workspace -RequestedVersion $Version
 $verificationRoot = [System.IO.Path]::GetFullPath((Join-Path $workspace "artifacts\verification"))
 $consumerRoot = [System.IO.Path]::GetFullPath((Join-Path $verificationRoot "package-consumer"))
 $packageRoot = [System.IO.Path]::GetFullPath((Join-Path $workspace "artifacts\packages"))

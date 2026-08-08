@@ -5,7 +5,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>SKinny.Editor.Protocol</PackageId>
-    <Version>0.3.0-preview.1</Version>
     <Authors>SKinny Editor contributors</Authors>
     <Description>Versioned local editor/runtime protocol for SKinny Editor projects.</Description>
     <PackageTags>StereoKit;editor;protocol</PackageTags>

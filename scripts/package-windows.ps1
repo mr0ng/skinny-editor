@@ -2,14 +2,18 @@
 param(
     [string]$RuntimeIdentifier = "win-x64",
     [string]$Configuration = "Release",
-    [string]$OutputDirectory = "artifacts\distribution"
+    [string]$OutputDirectory = "artifacts\distribution",
+    [string]$Version = ""
 )
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "release-common.ps1")
+$Version = Get-SKinnyReleaseVersion -RepositoryRoot $repoRoot -RequestedVersion $Version
 $distributionRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $OutputDirectory))
-$publishRoot = Join-Path $distributionRoot "SKinny-Editor-$RuntimeIdentifier"
-$archivePath = Join-Path $distributionRoot "SKinny-Editor-$RuntimeIdentifier.zip"
+$packageName = "SKinny-Editor-$Version-$RuntimeIdentifier"
+$publishRoot = Join-Path $distributionRoot $packageName
+$archivePath = Join-Path $distributionRoot "$packageName.zip"
 $distributionPrefix = $distributionRoot.TrimEnd(
     [System.IO.Path]::DirectorySeparatorChar,
     [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
@@ -67,7 +71,7 @@ Set-Content -LiteralPath $exampleDescriptor -Value $descriptorJson -Encoding utf
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="SKinny.Editor.Runtime" Version="0.3.0-preview.1" />
+    <PackageReference Include="SKinny.Editor.Runtime" Version="$Version" />
   </ItemGroup>
 </Project>
 "@ | Set-Content -LiteralPath (Join-Path $exampleRuntime "HelloStereoKitProject.csproj") -Encoding utf8
@@ -87,12 +91,43 @@ Set-Content -LiteralPath $exampleDescriptor -Value $descriptorJson -Encoding utf
 '@ | Set-Content -LiteralPath (Join-Path $exampleRuntime "NuGet.config") -Encoding utf8
 
 Copy-Item -LiteralPath (Join-Path $repoRoot "README.md") -Destination $publishRoot
-Copy-Item -LiteralPath (Join-Path $repoRoot "docs\15-installation-and-onboarding.md") -Destination $publishRoot
-Copy-Item -LiteralPath (Join-Path $repoRoot "docs\16-extension-authoring.md") -Destination $publishRoot
-Copy-Item -LiteralPath (Join-Path $repoRoot "docs\17-completion-and-acceptance.md") -Destination $publishRoot
-Copy-Item -LiteralPath (Join-Path $repoRoot "docs\19-visual-content-materials-text-and-spatial-ui.md") -Destination $publishRoot
-if (Test-Path -LiteralPath (Join-Path $repoRoot "docs\20-visual-authoring-guide.md")) {
-    Copy-Item -LiteralPath (Join-Path $repoRoot "docs\20-visual-authoring-guide.md") -Destination $publishRoot
+Copy-Item -LiteralPath (Join-Path $repoRoot "LICENSE") -Destination $publishRoot
+Copy-Item -LiteralPath (Join-Path $repoRoot "THIRD-PARTY-NOTICES.md") -Destination $publishRoot
+Copy-Item -LiteralPath (Join-Path $repoRoot "docs") -Destination $publishRoot -Recurse
+
+$licensesDirectory = Join-Path $publishRoot "licenses"
+New-Item -ItemType Directory -Force -Path $licensesDirectory | Out-Null
+
+$globalPackagesOutput = (& dotnet nuget locals global-packages --list | Out-String).Trim()
+if ($LASTEXITCODE -ne 0 -or $globalPackagesOutput -notmatch '^global-packages:\s*(.+)$') {
+    throw "Unable to resolve the NuGet global-packages directory for third-party notices."
+}
+$globalPackagesDirectory = [System.IO.Path]::GetFullPath($Matches[1].Trim())
+
+$packageNoticeFiles = @(
+    @("avalonia.angle.windows.natives", "2.1.25547.20250602", "LICENSE", "Avalonia.ANGLE-LICENSE.txt"),
+    @("harfbuzzsharp.nativeassets.win32", "8.3.1.1", "LICENSE.txt", "HarfBuzzSharp-LICENSE.txt"),
+    @("harfbuzzsharp.nativeassets.win32", "8.3.1.1", "THIRD-PARTY-NOTICES.txt", "HarfBuzzSharp-THIRD-PARTY-NOTICES.txt"),
+    @("skiasharp.nativeassets.win32", "2.88.9", "LICENSE.txt", "SkiaSharp-LICENSE.txt"),
+    @("skiasharp.nativeassets.win32", "2.88.9", "THIRD-PARTY-NOTICES.txt", "SkiaSharp-THIRD-PARTY-NOTICES.txt"),
+    @("system.io.pipelines", "8.0.0", "LICENSE.TXT", "System.IO.Pipelines-LICENSE.txt"),
+    @("system.io.pipelines", "8.0.0", "THIRD-PARTY-NOTICES.TXT", "System.IO.Pipelines-THIRD-PARTY-NOTICES.txt")
+)
+foreach ($notice in $packageNoticeFiles) {
+    $noticeSource = Join-Path $globalPackagesDirectory (Join-Path $notice[0] (Join-Path $notice[1] $notice[2]))
+    if (-not (Test-Path -LiteralPath $noticeSource -PathType Leaf)) {
+        throw "Required third-party notice was not found: $noticeSource"
+    }
+    Copy-Item -LiteralPath $noticeSource -Destination (Join-Path $licensesDirectory $notice[3])
+}
+
+$dotnetRoot = Split-Path -Parent (Get-Command dotnet -ErrorAction Stop).Source
+foreach ($dotnetNotice in @("LICENSE.txt", "ThirdPartyNotices.txt")) {
+    $dotnetNoticeSource = Join-Path $dotnetRoot $dotnetNotice
+    if (-not (Test-Path -LiteralPath $dotnetNoticeSource -PathType Leaf)) {
+        throw "Required .NET redistribution notice was not found: $dotnetNoticeSource"
+    }
+    Copy-Item -LiteralPath $dotnetNoticeSource -Destination (Join-Path $licensesDirectory "dotnet-$dotnetNotice")
 }
 
 if (Test-Path -LiteralPath $archivePath) {
