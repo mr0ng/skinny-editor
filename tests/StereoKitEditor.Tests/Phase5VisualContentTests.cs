@@ -261,6 +261,48 @@ public sealed class Phase5VisualContentTests
     }
 
     [Fact]
+    public void FrameUiElement_UsesCalculatedLayoutCenterAndKeepsOwningPanelVisible()
+    {
+        var slider = new SceneEntity
+        {
+            Name = "Amount",
+            Components =
+            {
+                UiRect = new() { PreferredSize = new(0.4, 0.06) },
+                UiSlider = new(),
+            },
+        };
+        var panel = new SceneEntity
+        {
+            Name = "Controls",
+            Components =
+            {
+                Transform = new(
+                    new Vector3Value(0.43, 0.07, -0.76),
+                    QuaternionValue.Identity,
+                    Vector3Value.One),
+                UiPanel = new() { Size = new(0.48, 0.52) },
+            },
+            Children = [slider],
+        };
+        var scene = new SceneDocument { Roots = [panel] };
+
+        var resolved = SceneViewportController.TryResolveUiFrameTarget(
+            scene,
+            slider.Id,
+            out var panelWorld,
+            out var bounds);
+
+        Assert.True(resolved);
+        Assert.Equal(0.43f, panelWorld.Translation.x, 3);
+        Assert.Equal(0.07f, panelWorld.Translation.y, 3);
+        Assert.Equal(-0.76f, panelWorld.Translation.z, 3);
+        Assert.Equal(0.48, bounds.SizeX, 3);
+        Assert.Equal(0.52, bounds.SizeY, 3);
+        Assert.NotEqual(0, bounds.CenterY);
+    }
+
+    [Fact]
     public void SpatialLayout_LargeVisualPanelRemainsDeterministicAndBounded()
     {
         var children = Enumerable.Range(0, 500).Select(index => new SceneEntity
@@ -350,7 +392,10 @@ public sealed class Phase5VisualContentTests
             Assert.Contains(assets, asset => asset.Metadata.Kind == AssetKind.Material && asset.Metadata.AssetDependencies.Count == 1);
             Assert.Contains(assets, asset => asset.Metadata.Kind == AssetKind.TextStyle);
             Assert.Contains(scene.Roots, entity => entity.Components.PrimitiveMeshRenderer is { Primitive: PrimitiveKind.Quad, MaterialAssetId: not null });
-            Assert.Contains(scene.Roots, entity => entity.Components.PrimitiveMeshRenderer is { Primitive: PrimitiveKind.Cube, MaterialAssetId: not null });
+            var cube = Assert.Single(
+                scene.Roots,
+                entity => entity.Components.PrimitiveMeshRenderer is { Primitive: PrimitiveKind.Cube });
+            Assert.True(cube.Components.PrimitiveMeshRenderer!.Color.B > cube.Components.PrimitiveMeshRenderer.Color.R);
             Assert.Contains(scene.Roots, entity => entity.Components.ImageRenderer is not null);
             Assert.Contains(scene.Roots, entity => entity.Components.TextRenderer?.TextStyleAssetId is not null);
             var panel = Assert.Single(scene.Roots, entity => entity.Components.UiPanel is not null);

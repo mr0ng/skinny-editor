@@ -1,6 +1,6 @@
 # Architecture overview
 
-SKinny Editor is a Windows-first visual editor for StereoKit projects. It uses
+SKinny Editor is a visual authoring environment for StereoKit projects. It uses
 a desktop editor shell for authoring and separate StereoKit runtime processes
 for the live Scene and isolated Play experiences.
 
@@ -56,7 +56,8 @@ when a runtime or the editor exits.
 
 ## Platform direction
 
-The editor shell, native window embedding, input bridge, packaging, installer,
-and initial device workflows target Windows. Other desktop platforms are
-deferred until the Windows product reaches a stable beta and demand justifies
-the additional native integration work.
+The current editor shell, native window embedding, input bridge, packaging,
+installer, and initial device workflows target Windows. Shared scene, adapter,
+asset, and protocol formats remain platform-neutral so a future macOS edition
+can use a separate native shell and embedding implementation. That edition is
+not part of the current delivery schedule.

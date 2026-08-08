@@ -1,0 +1,58 @@
+{
+  "formatVersion": 2,
+  "assetId": "70000000-0000-0000-0000-000000000083",
+  "kind": "Model",
+  "sourcePath": "AxisSculpture.glb",
+  "normalizedPathKey": "axissculpture.glb",
+  "contentHash": "fa134230af90cef3f5faca6d6bab67852d6531a65a70167efa39695921cc410a",
+  "sourceLength": 2408,
+  "sourceLastWriteUtcTicks": 639218243714378793,
+  "importerId": "skinny.glb",
+  "importerVersion": 1,
+  "importerSettings": {
+    "scale": 1,
+    "generateThumbnail": true,
+    "colorSpace": "Srgb",
+    "textureUsage": "Color",
+    "sampleMode": "Linear",
+    "addressMode": "Wrap",
+    "generateMipmaps": "Auto",
+    "alphaHint": "Auto"
+  },
+  "dependencies": [],
+  "assetDependencies": [],
+  "generatedArtifactKeys": [
+    "skinny.glb-v1-fa134230af90cef3f5faca6d6bab67852d6531a65a70167efa39695921cc410a"
+  ],
+  "diagnostics": [],
+  "thumbnailCacheKey": "skinny.glb-v1-fa134230af90cef3f5faca6d6bab67852d6531a65a70167efa39695921cc410a",
+  "bounds": {
+    "centerX": 0.005367457866668701,
+    "centerY": 0.03325824439525604,
+    "centerZ": 0.11780871450901031,
+    "sizeX": 1.0492650270462036,
+    "sizeY": 0.9934834241867065,
+    "sizeZ": 0.8243825435638428,
+    "largestDimension": 1.0492650270462036
+  },
+  "model": {
+    "materialSlots": [
+      {
+        "index": 0,
+        "name": "Ocean"
+      },
+      {
+        "index": 1,
+        "name": "Mint"
+      },
+      {
+        "index": 2,
+        "name": "Violet"
+      }
+    ]
+  },
+  "texture": null,
+  "font": null,
+  "material": null,
+  "textStyle": null
+}

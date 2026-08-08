@@ -13,6 +13,8 @@ internal sealed class SpatialUiRenderer(
     Action<SceneEntity, string> reportError,
     Action<Guid, Guid, JsonElement, string> componentDataCommitted)
 {
+    private static readonly Quat AuthoredPanelRotation = Quat.FromAngles(0, 180, 0);
+
     private readonly Dictionary<Guid, Pose> _panelPoses = [];
     private readonly Material _layoutHandleMaterial = CreateLayoutHandleMaterial();
     private LayoutResizeDrag? _resizeDrag;
@@ -50,13 +52,16 @@ internal sealed class SpatialUiRenderer(
         {
             if (panel.Kind == UiPanelKind.Surface)
             {
-                UI.PushSurface(Pose.Identity, Vec3.Zero, size);
-                DrawElements(panelEntity.Id, layouts, interactive);
+                UI.PushSurface(new Pose(Vec3.Zero, AuthoredPanelRotation), Vec3.Zero, size);
+                DrawElements(panelEntity.Id, layouts, interactive, panel.Kind, size);
                 UI.PopSurface();
             }
             else
             {
-                var pose = _panelPoses.TryGetValue(panelEntity.Id, out var current) ? current : Pose.Identity;
+                // StereoKit windows use a top-center origin, while authored panel
+                // transforms and layout handles use the panel center.
+                var authoredPose = new Pose(new Vec3(0, size.y * 0.5f, 0), AuthoredPanelRotation);
+                var pose = _panelPoses.TryGetValue(panelEntity.Id, out var current) ? current : authoredPose;
                 var move = runtimeMode == RuntimeSessionMode.Play && panel.MovableInGame ? UIMove.Exact : UIMove.None;
                 UI.WindowBegin(
                     $"{panel.Title}##{panelEntity.Id:N}",
@@ -69,7 +74,7 @@ internal sealed class SpatialUiRenderer(
                         _ => UIWin.Normal,
                     },
                     move);
-                DrawElements(panelEntity.Id, layouts, interactive);
+                DrawElements(panelEntity.Id, layouts, interactive, panel.Kind, size);
                 UI.WindowEnd();
                 _panelPoses[panelEntity.Id] = pose;
             }
@@ -137,12 +142,26 @@ internal sealed class SpatialUiRenderer(
         }
     }
 
-    private void DrawElements(Guid panelId, IReadOnlyList<UiElementLayout> layouts, bool interactive)
+    private void DrawElements(
+        Guid panelId,
+        IReadOnlyList<UiElementLayout> layouts,
+        bool interactive,
+        UiPanelKind panelKind,
+        Vec2 panelSize)
     {
         foreach (var layout in layouts)
         {
             UI.PushId(layout.Entity.Id.ToString("N"));
-            UI.LayoutPush(layout.TopLeft, layout.Size, addMargin: false);
+            // StereoKit UI advances from X+ toward X-, and WindowBegin's origin
+            // is top-center. Convert the editor's conventional centered, X+
+            // right layout coordinates at the rendering boundary.
+            var drawTopLeft = new Vec3(
+                -layout.TopLeft.x,
+                panelKind == UiPanelKind.Surface
+                    ? layout.TopLeft.y
+                    : layout.TopLeft.y - (panelSize.y * 0.5f),
+                layout.TopLeft.z);
+            UI.LayoutPush(drawTopLeft, layout.Size, addMargin: false);
             try
             {
                 DrawElement(panelId, layout, interactive);
@@ -165,7 +184,8 @@ internal sealed class SpatialUiRenderer(
 
         if (entity.Components.UiText is { } text)
         {
-            var style = resources.GetTextStyle(text.TextStyleAssetId, null, 0.035, text.Color, out var error);
+            var characterHeight = text.TextStyleAssetId is null ? 0.018 : 0.035;
+            var style = resources.GetTextStyle(text.TextStyleAssetId, null, characterHeight, text.Color, out var error);
             if (error is not null) reportError(entity, error);
             UI.PushTextStyle(style);
             UI.PushTint(ToColor(text.Color));
@@ -177,7 +197,7 @@ internal sealed class SpatialUiRenderer(
                     TextHorizontalAlignment.Right => Align.TopRight,
                     _ => Align.TopLeft,
                 },
-                text.Wrap ? TextFit.Wrap : TextFit.Overflow,
+                text.Wrap ? TextFit.Wrap | TextFit.Clip : TextFit.Clip,
                 layout.Size);
             UI.PopTint();
             UI.PopTextStyle();

@@ -47,6 +47,7 @@ public static partial class EditorRuntimeHost
     private static IReadOnlySet<string> _negotiatedCapabilities = new HashSet<string>(StringComparer.Ordinal);
     private static long _lastTelemetryTimestamp;
     private static double _smoothedFrameTimeMilliseconds;
+    private static bool _initialPlayCameraApplied;
 
     public static bool IsEditorLaunch(string[] args) =>
         !string.IsNullOrWhiteSpace(GetArgument(args, "--pipe"));
@@ -191,6 +192,10 @@ public static partial class EditorRuntimeHost
             return 7;
         }
 
+        // Authorable scenes own their background through Environment Settings.
+        // StereoKit otherwise draws its bright default skybox over ClearColor.
+        Renderer.EnableSky = false;
+
         _entityMaterial = Material.Default.Copy();
         _floorMaterial = Material.Default.Copy();
         _floorMaterial[MatParamName.ColorTint] = new Color(0.15f, 0.17f, 0.20f, 1);
@@ -309,6 +314,7 @@ public static partial class EditorRuntimeHost
             return;
         }
 
+        ApplyInitialPlayCamera();
         AdvancePlayClock();
 
         SceneDocument scene;
@@ -384,6 +390,22 @@ public static partial class EditorRuntimeHost
         }
 
         PublishTelemetry(scene, selection, revision);
+    }
+
+    private static void ApplyInitialPlayCamera()
+    {
+        if (_mode != RuntimeSessionMode.Play || _initialPlayCameraApplied)
+        {
+            return;
+        }
+
+        // The simulator remembers its last virtual head pose between processes.
+        // Play sessions should still open on an authored scene predictably, so
+        // map that pose to a stable, forward-facing editor starting point once.
+        // CameraRoot remains free after this frame for normal simulator movement.
+        var targetHead = Matrix.TR(new Vec3(0, 0.10f, -0.10f), Quat.Identity);
+        Renderer.CameraRoot = targetHead * Input.Head.ToMatrix().Inverse;
+        _initialPlayCameraApplied = true;
     }
 
     private static void PublishTelemetry(SceneDocument scene, Guid? selectedEntityId, long revision)
@@ -509,7 +531,10 @@ public static partial class EditorRuntimeHost
                 ReportVisualAssetErrorOnce(entity, materialError);
             }
 
-            mesh.Draw(material, Matrix.S(0.20f), color, RenderLayer.Layer0);
+            var meshTransform = renderer.Primitive == PrimitiveKind.Quad
+                ? Matrix.TRS(Vec3.Zero, Quat.FromAngles(0, 180, 0), Vec3.One * 0.20f)
+                : Matrix.S(0.20f);
+            mesh.Draw(material, meshTransform, color, RenderLayer.Layer0);
 
             if (wantsPick)
             {
@@ -1322,7 +1347,9 @@ public static partial class EditorRuntimeHost
     {
         if (mode == BillboardMode.None)
         {
-            return Quat.Identity;
+            // StereoKit's planar drawing APIs face local -Z. Editor-authored
+            // planar content should face the default +Z viewing direction.
+            return Quat.FromAngles(0, 180, 0);
         }
 
         var worldPosition = Hierarchy.ToWorld(Vec3.Zero);

@@ -26,6 +26,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     private readonly DiagnosticBundleWriter _diagnosticBundleWriter = new();
     private readonly EditorPreferencesService _preferencesService = new();
     private readonly SceneRecoveryStore _recoveryStore;
+    private readonly string _workspaceDisplayRoot;
     private readonly AssetDatabase _assetDatabase;
     private readonly SceneTemplateLibrary _templateLibrary;
     private readonly RuntimeSession _sceneHost = new(RuntimeSessionMode.Scene);
@@ -117,6 +118,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             .Concat(PlayProfiles.Select(profile =>
                 _project.CreateRuntimeProjectSpec(RuntimeProfileMode.Play, profile.Id).ProjectDirectory));
         var sourceRoot = FindCommonDirectory(new[] { _project.ProjectDirectory }.Concat(profileDirectories).ToArray());
+        _workspaceDisplayRoot = Path.GetDirectoryName(_project.ResolveSolutionPath()) ?? sourceRoot;
         _sourceWatcher = new DebouncedFileWatcher(sourceRoot, DebouncedFileWatcher.IsProjectSourcePath);
         _assetWatcher = new DebouncedFileWatcher(_assetDatabase.AssetsRoot, DebouncedFileWatcher.IsAssetSourcePath);
         _sourceWatcher.FilesChanged += HandleSourceFilesChanged;
@@ -2759,11 +2761,32 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             return;
         }
 
-        ConsoleEntries.Add(new(DateTimeOffset.Now, level, message));
+        ConsoleEntries.Add(new(DateTimeOffset.Now, level, RedactConsolePaths(message)));
         while (ConsoleEntries.Count > 500)
         {
             ConsoleEntries.RemoveAt(0);
         }
+    }
+
+    private string RedactConsolePaths(string message)
+    {
+        var result = message.Replace(
+            _workspaceDisplayRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            "<workspace>",
+            StringComparison.OrdinalIgnoreCase);
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (!string.IsNullOrWhiteSpace(localAppData))
+        {
+            result = result.Replace(localAppData, "%LOCALAPPDATA%", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrWhiteSpace(userProfile))
+        {
+            result = result.Replace(userProfile, "%USERPROFILE%", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return result;
     }
 
     private static SceneDocument CreateFallbackScene() => new()
