@@ -82,8 +82,8 @@ SKinny can author only the structured components stored in its scene document. A
 - TrueType font import is the first supported font path;
 - Standard/Unlit authored Materials, not a shader graph;
 - a deliberate StereoKit UI subset, not HTML/CSS or general desktop layout;
-- Windows editor and simulator authoring first; other editor platforms remain deprioritized.
+- the current editor and simulator distribution targets Windows; a separate macOS edition may follow in a future roadmap.
 
 ## Verification
 
-Phase 5 is covered by the 91-test editor suite, clean adapter `0.3` package consumption, native Scene input, self-contained Windows packaging, checksum/startup validation, and isolated packaged Scene/Play probes with the typed sample asset catalog. Cross-GPU alpha quality, DPI combinations, hand/controller feel, and graphics-device loss remain hands-on release acceptance checks.
+Phase 5 is covered by the automated editor suite, clean adapter `0.3` package consumption, native Scene input, self-contained Windows packaging, checksum/startup validation, and isolated packaged Scene/Play probes with the typed sample asset catalog. Cross-GPU alpha quality, DPI combinations, hand/controller feel, and graphics-device loss remain hands-on release acceptance checks.
