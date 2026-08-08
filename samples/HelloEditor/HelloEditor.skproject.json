@@ -1,0 +1,24 @@
+{
+  "formatVersion": 2,
+  "projectId": "f541b7c1-4234-4be6-86ee-c0dcaf2f3d97",
+  "name": "Hello Editor",
+  "solution": "../../StereoKitEditor.sln",
+  "assetsRoot": "Assets",
+  "scenesRoot": "Scenes",
+  "startupScene": "Scenes/Main.skscene.json",
+  "defaultSceneProfile": "editor-desktop",
+  "defaultPlayProfile": "editor-desktop",
+  "runtimeProfiles": [
+    {
+      "id": "editor-desktop",
+      "displayName": "Editor Desktop",
+      "project": "../HelloStereoKitProject/HelloStereoKitProject.csproj",
+      "configuration": "Debug",
+      "targetFramework": "net8.0",
+      "workingDirectory": "../HelloStereoKitProject",
+      "arguments": [],
+      "environment": {},
+      "modes": ["Scene", "Play"]
+    }
+  ]
+}

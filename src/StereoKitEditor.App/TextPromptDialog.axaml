@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="StereoKitEditor.App.TextPromptDialog"
+        Width="520" Height="190"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <TextBlock Margin="18,16,18,8" TextWrapping="Wrap" Text="{Binding Prompt}" />
+    <TextBox x:Name="ValueBox" Grid.Row="1" Margin="18,6" VerticalAlignment="Top"
+             Text="{Binding Value, Mode=TwoWay}" KeyDown="HandleKeyDown" />
+    <Border Grid.Row="2" Padding="12" Background="#20242A" BorderBrush="#363D45" BorderThickness="0,1,0,0">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button MinWidth="90" Click="HandleCancel" Content="Cancel" />
+        <Button MinWidth="90" Classes="accent" Click="HandleAccept" Content="OK" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

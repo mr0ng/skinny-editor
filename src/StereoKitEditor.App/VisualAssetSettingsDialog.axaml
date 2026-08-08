@@ -1,0 +1,83 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="StereoKitEditor.App.VisualAssetSettingsDialog"
+        Width="620" Height="670" MinWidth="520" MinHeight="480"
+        Title="Asset settings — SKinny Editor"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <StackPanel Margin="18,15,18,10">
+      <TextBlock FontSize="17" FontWeight="SemiBold" Text="{Binding Title}" />
+      <TextBlock Classes="muted" Text="{Binding Subtitle}" />
+    </StackPanel>
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Margin="18,4" Spacing="10">
+        <StackPanel IsVisible="{Binding IsTexture}" Spacing="9">
+          <TextBlock FontWeight="SemiBold" Text="Texture Import" />
+          <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+            <TextBlock VerticalAlignment="Center" Text="Color Space" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding ColorSpaces}" SelectedItem="{Binding ColorSpace}" />
+            <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Usage" />
+            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding TextureUsages}" SelectedItem="{Binding TextureUsage}" />
+            <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Sampling" />
+            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding SampleModes}" SelectedItem="{Binding SampleMode}" />
+            <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Address Mode" />
+            <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding AddressModes}" SelectedItem="{Binding AddressMode}" />
+            <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Mipmaps" />
+            <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding MipmapModes}" SelectedItem="{Binding MipmapMode}" />
+            <TextBlock Grid.Row="5" VerticalAlignment="Center" Text="Alpha Hint" />
+            <ComboBox Grid.Row="5" Grid.Column="1" ItemsSource="{Binding AlphaHints}" SelectedItem="{Binding AlphaHint}" />
+          </Grid>
+          <Border Padding="10" Background="#1A2025" CornerRadius="3">
+            <TextBlock TextWrapping="Wrap" Classes="muted" Text="Changing these settings reimports the Texture and invalidates dependent runtime resources." />
+          </Border>
+        </StackPanel>
+
+        <StackPanel IsVisible="{Binding IsMaterial}" Spacing="9">
+          <TextBlock FontWeight="SemiBold" Text="Material" />
+          <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+            <TextBlock VerticalAlignment="Center" Text="Shader" /><ComboBox Grid.Column="1" ItemsSource="{Binding ShaderFamilies}" SelectedItem="{Binding ShaderFamily}" />
+            <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Base Color Texture" /><ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding TextureReferences}" SelectedItem="{Binding BaseColorTexture}" DisplayMemberBinding="{Binding Label}" />
+            <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Normal Texture" /><ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding TextureReferences}" SelectedItem="{Binding NormalTexture}" DisplayMemberBinding="{Binding Label}" />
+            <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Metal/Rough Texture" /><ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding TextureReferences}" SelectedItem="{Binding MetalRoughTexture}" DisplayMemberBinding="{Binding Label}" />
+            <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Occlusion Texture" /><ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding TextureReferences}" SelectedItem="{Binding OcclusionTexture}" DisplayMemberBinding="{Binding Label}" />
+            <TextBlock Grid.Row="5" VerticalAlignment="Center" Text="Emission Texture" /><ComboBox Grid.Row="5" Grid.Column="1" ItemsSource="{Binding TextureReferences}" SelectedItem="{Binding EmissionTexture}" DisplayMemberBinding="{Binding Label}" />
+            <TextBlock Grid.Row="6" VerticalAlignment="Center" Text="Tint" /><ColorPicker Grid.Row="6" Grid.Column="1" Color="{Binding MaterialColor}" />
+            <TextBlock Grid.Row="7" VerticalAlignment="Center" Text="Metallic" /><NumericUpDown Grid.Row="7" Grid.Column="1" Minimum="0" Maximum="1" Increment="0.01" Value="{Binding Metallic}" />
+            <TextBlock Grid.Row="8" VerticalAlignment="Center" Text="Roughness" /><NumericUpDown Grid.Row="8" Grid.Column="1" Minimum="0" Maximum="1" Increment="0.01" Value="{Binding Roughness}" />
+            <TextBlock Grid.Row="9" VerticalAlignment="Center" Text="Emission" /><NumericUpDown Grid.Row="9" Grid.Column="1" Minimum="0" Maximum="100" Increment="0.1" Value="{Binding EmissionFactor}" />
+            <TextBlock Grid.Row="10" VerticalAlignment="Center" Text="Transparency" /><ComboBox Grid.Row="10" Grid.Column="1" ItemsSource="{Binding Transparencies}" SelectedItem="{Binding MaterialTransparency}" />
+            <TextBlock Grid.Row="11" VerticalAlignment="Center" Text="Alpha Cutoff" /><NumericUpDown Grid.Row="11" Grid.Column="1" Minimum="0" Maximum="1" Increment="0.01" Value="{Binding AlphaCutoff}" />
+            <TextBlock Grid.Row="12" VerticalAlignment="Center" Text="Cull" /><ComboBox Grid.Row="12" Grid.Column="1" ItemsSource="{Binding CullModes}" SelectedItem="{Binding CullMode}" />
+            <TextBlock Grid.Row="13" VerticalAlignment="Center" Text="Depth Test" /><ComboBox Grid.Row="13" Grid.Column="1" ItemsSource="{Binding DepthTests}" SelectedItem="{Binding DepthTest}" />
+            <TextBlock Grid.Row="14" VerticalAlignment="Center" Text="Depth Write" /><CheckBox Grid.Row="14" Grid.Column="1" IsChecked="{Binding DepthWrite}" />
+            <TextBlock Grid.Row="15" VerticalAlignment="Center" Text="Queue Offset" /><NumericUpDown Grid.Row="15" Grid.Column="1" Minimum="-100" Maximum="100" Increment="1" Value="{Binding QueueOffset}" />
+          </Grid>
+          <TextBlock Classes="muted" Text="UV Transform" />
+          <Grid ColumnDefinitions="80,*,*,*,*" ColumnSpacing="6">
+            <TextBlock VerticalAlignment="Center" Text="Scale / Offset" />
+            <NumericUpDown Grid.Column="1" Value="{Binding UvScaleX}" Increment="0.1" />
+            <NumericUpDown Grid.Column="2" Value="{Binding UvScaleY}" Increment="0.1" />
+            <NumericUpDown Grid.Column="3" Value="{Binding UvOffsetX}" Increment="0.1" />
+            <NumericUpDown Grid.Column="4" Value="{Binding UvOffsetY}" Increment="0.1" />
+          </Grid>
+        </StackPanel>
+
+        <StackPanel IsVisible="{Binding IsTextStyle}" Spacing="9">
+          <TextBlock FontWeight="SemiBold" Text="Text Style" />
+          <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+            <TextBlock VerticalAlignment="Center" Text="Font" /><ComboBox Grid.Column="1" ItemsSource="{Binding FontReferences}" SelectedItem="{Binding FontReference}" DisplayMemberBinding="{Binding Label}" />
+            <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Character Height (m)" /><NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="0.001" Maximum="10" Increment="0.001" Value="{Binding CharacterHeight}" />
+            <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Color" /><ColorPicker Grid.Row="2" Grid.Column="1" Color="{Binding TextColor}" />
+            <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Material" /><ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding MaterialReferences}" SelectedItem="{Binding MaterialReference}" DisplayMemberBinding="{Binding Label}" />
+          </Grid>
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+    <Border Grid.Row="2" Padding="12" Background="#20242A" BorderBrush="#363D45" BorderThickness="0,1,0,0">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button MinWidth="90" Click="HandleCancel" Content="Cancel" />
+        <Button MinWidth="90" Classes="accent" Click="HandleSave" Content="Save" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="StereoKitEditor.App.AssetPickerDialog"
+        Width="560" Height="440" MinWidth="420" MinHeight="320"
+        Title="Choose asset — SKinny Editor"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <TextBlock Margin="18,16,18,8" FontSize="16" FontWeight="SemiBold" Text="{Binding Heading}" />
+    <TextBox Grid.Row="1" Margin="18,4,18,10" Watermark="Search by asset name or path"
+             Text="{Binding Search, Mode=TwoWay}" />
+    <ListBox x:Name="AssetList" Grid.Row="2" Margin="18,0" ItemsSource="{Binding Filtered}"
+             DoubleTapped="HandleDoubleTapped">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <Grid Margin="5" ColumnDefinitions="54,*,Auto">
+            <Border Width="46" Height="46" Background="#171A1F" CornerRadius="3">
+              <Image Source="{Binding Thumbnail}" Stretch="Uniform" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+              <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+              <TextBlock Classes="muted" FontSize="10" Text="{Binding Path}" />
+            </StackPanel>
+            <TextBlock Grid.Column="2" VerticalAlignment="Center" Classes="muted" Text="{Binding Kind}" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <Border Grid.Row="3" Padding="12" Background="#20242A" BorderBrush="#363D45" BorderThickness="0,1,0,0">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button MinWidth="90" Click="HandleCancel" Content="Cancel" />
+        <Button MinWidth="90" Classes="accent" Click="HandleAccept" Content="Choose" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

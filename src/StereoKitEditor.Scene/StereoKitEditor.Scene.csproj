@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageId>SKinny.Editor.Scene</PackageId>
+    <Version>0.3.0-preview.1</Version>
+    <Authors>SKinny Editor contributors</Authors>
+    <Description>Versioned scene documents and serialization for SKinny Editor projects.</Description>
+    <PackageTags>StereoKit;editor;scene</PackageTags>
+    <PackageReadmeFile>PACKAGE.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\docs\PACKAGE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

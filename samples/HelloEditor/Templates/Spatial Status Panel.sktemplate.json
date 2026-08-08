@@ -1,0 +1,237 @@
+{
+  "formatVersion": 1,
+  "templateId": "71000000-0000-0000-0000-000000000001",
+  "name": "Spatial Status Panel",
+  "root": {
+    "id": "71000000-0000-0000-0000-000000000010",
+    "name": "Spatial Status Panel",
+    "enabled": true,
+    "components": [
+      {
+        "id": "71000000-0000-0000-0000-000000000011",
+        "typeId": "stereokit.transform",
+        "schemaVersion": 1,
+        "enabled": true,
+        "data": {
+          "position": [0, 0, -0.7],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      },
+      {
+        "id": "71000000-0000-0000-0000-000000000012",
+        "typeId": "stereokit.ui-panel",
+        "schemaVersion": 1,
+        "enabled": true,
+        "data": {
+          "title": "Status",
+          "kind": "Window",
+          "size": [0.46, 0.38],
+          "autoWidth": false,
+          "autoHeight": false,
+          "movableInGame": true,
+          "farInteraction": true,
+          "visible": true
+        }
+      }
+    ],
+    "children": [
+      {
+        "id": "71000000-0000-0000-0000-000000000020",
+        "name": "Heading",
+        "enabled": true,
+        "components": [
+          {
+            "id": "71000000-0000-0000-0000-000000000021",
+            "typeId": "stereokit.transform",
+            "schemaVersion": 1,
+            "enabled": true,
+            "data": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+          },
+          {
+            "id": "71000000-0000-0000-0000-000000000022",
+            "typeId": "stereokit.ui-rect",
+            "schemaVersion": 1,
+            "enabled": true,
+            "data": {
+              "layoutMode": "Flow",
+              "preferredSize": [0.4, 0.06],
+              "minimumSize": [0, 0],
+              "margin": [0, 0, 0, 0.008],
+              "padding": [0, 0, 0, 0],
+              "sameLine": false,
+              "lineBreak": true,
+              "anchor": "TopLeft",
+              "pivot": [0, 0],
+              "position": [0, 0],
+              "size": [0.4, 0.06],
+              "stretchWidth": true,
+              "stretchHeight": false,
+              "clip": false
+            }
+          },
+          {
+            "id": "71000000-0000-0000-0000-000000000023",
+            "typeId": "stereokit.ui-text",
+            "schemaVersion": 1,
+            "enabled": true,
+            "data": {
+              "text": "Spatial dashboard",
+              "textStyleAssetId": "70000000-0000-0000-0000-000000000082",
+              "alignment": "Left",
+              "wrap": true,
+              "color": [1, 1, 1, 1]
+            }
+          }
+        ],
+        "children": []
+      },
+      {
+        "id": "71000000-0000-0000-0000-000000000030",
+        "name": "Preview Image",
+        "enabled": true,
+        "components": [
+          {
+            "id": "71000000-0000-0000-0000-000000000031",
+            "typeId": "stereokit.transform",
+            "schemaVersion": 1,
+            "enabled": true,
+            "data": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+          },
+          {
+            "id": "71000000-0000-0000-0000-000000000032",
+            "typeId": "stereokit.ui-rect",
+            "schemaVersion": 1,
+            "enabled": true,
+            "data": {
+              "layoutMode": "Flow",
+              "preferredSize": [0.4, 0.14],
+              "minimumSize": [0, 0],
+              "margin": [0, 0, 0, 0.008],
+              "padding": [0, 0, 0, 0],
+              "sameLine": false,
+              "lineBreak": true,
+              "anchor": "TopLeft",
+              "pivot": [0, 0],
+              "position": [0, 0],
+              "size": [0.4, 0.14],
+              "stretchWidth": true,
+              "stretchHeight": false,
+              "clip": false
+            }
+          },
+          {
+            "id": "71000000-0000-0000-0000-000000000033",
+            "typeId": "stereokit.ui-image",
+            "schemaVersion": 1,
+            "enabled": true,
+            "data": {
+              "textureAssetId": "70000000-0000-0000-0000-000000000080",
+              "sizingMode": "Fit",
+              "tint": [1, 1, 1, 1]
+            }
+          }
+        ],
+        "children": []
+      },
+      {
+        "id": "71000000-0000-0000-0000-000000000040",
+        "name": "Enabled Toggle",
+        "enabled": true,
+        "components": [
+          {
+            "id": "71000000-0000-0000-0000-000000000041",
+            "typeId": "stereokit.transform",
+            "schemaVersion": 1,
+            "enabled": true,
+            "data": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+          },
+          {
+            "id": "71000000-0000-0000-0000-000000000042",
+            "typeId": "stereokit.ui-rect",
+            "schemaVersion": 1,
+            "enabled": true,
+            "data": {
+              "layoutMode": "Flow",
+              "preferredSize": [0.4, 0.05],
+              "minimumSize": [0, 0],
+              "margin": [0, 0, 0, 0.008],
+              "padding": [0, 0, 0, 0],
+              "sameLine": false,
+              "lineBreak": true,
+              "anchor": "TopLeft",
+              "pivot": [0, 0],
+              "position": [0, 0],
+              "size": [0.4, 0.05],
+              "stretchWidth": true,
+              "stretchHeight": false,
+              "clip": false
+            }
+          },
+          {
+            "id": "71000000-0000-0000-0000-000000000043",
+            "typeId": "stereokit.ui-toggle",
+            "schemaVersion": 1,
+            "enabled": true,
+            "data": {
+              "label": "Enabled",
+              "bindingId": "hello.enabled",
+              "designValue": true,
+              "enabled": true
+            }
+          }
+        ],
+        "children": []
+      },
+      {
+        "id": "71000000-0000-0000-0000-000000000050",
+        "name": "Reset Button",
+        "enabled": true,
+        "components": [
+          {
+            "id": "71000000-0000-0000-0000-000000000051",
+            "typeId": "stereokit.transform",
+            "schemaVersion": 1,
+            "enabled": true,
+            "data": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+          },
+          {
+            "id": "71000000-0000-0000-0000-000000000052",
+            "typeId": "stereokit.ui-rect",
+            "schemaVersion": 1,
+            "enabled": true,
+            "data": {
+              "layoutMode": "Flow",
+              "preferredSize": [0.4, 0.05],
+              "minimumSize": [0, 0],
+              "margin": [0, 0, 0, 0],
+              "padding": [0, 0, 0, 0],
+              "sameLine": false,
+              "lineBreak": true,
+              "anchor": "TopLeft",
+              "pivot": [0, 0],
+              "position": [0, 0],
+              "size": [0.4, 0.05],
+              "stretchWidth": true,
+              "stretchHeight": false,
+              "clip": false
+            }
+          },
+          {
+            "id": "71000000-0000-0000-0000-000000000053",
+            "typeId": "stereokit.ui-button",
+            "schemaVersion": 1,
+            "enabled": true,
+            "data": {
+              "label": "Reset",
+              "imageTextureAssetId": null,
+              "actionId": "hello.reset",
+              "enabled": true
+            }
+          }
+        ],
+        "children": []
+      }
+    ]
+  }
+}

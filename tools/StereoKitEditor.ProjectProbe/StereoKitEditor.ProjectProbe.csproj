@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\StereoKitEditor.App\StereoKitEditor.App.csproj" />
+    <ProjectReference Include="..\..\src\StereoKitEditor.Assets\StereoKitEditor.Assets.csproj" />
+    <ProjectReference Include="..\..\src\StereoKitEditor.ProjectSystem\StereoKitEditor.ProjectSystem.csproj" />
+  </ItemGroup>
+</Project>

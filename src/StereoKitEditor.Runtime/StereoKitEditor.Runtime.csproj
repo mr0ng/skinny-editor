@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageId>SKinny.Editor.Runtime</PackageId>
+    <Version>0.3.0-preview.1</Version>
+    <Authors>SKinny Editor contributors</Authors>
+    <Description>Isolated StereoKit Scene and Play runtime integration for SKinny Editor projects.</Description>
+    <PackageTags>StereoKit;editor;runtime</PackageTags>
+    <PackageReadmeFile>PACKAGE.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\docs\PACKAGE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StereoKit" Version="0.4.0-preview.3557" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\StereoKitEditor.Adapter.Abstractions\StereoKitEditor.Adapter.Abstractions.csproj" />
+    <ProjectReference Include="..\StereoKitEditor.Protocol\StereoKitEditor.Protocol.csproj" />
+    <ProjectReference Include="..\StereoKitEditor.Scene\StereoKitEditor.Scene.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>StereoKitEditor.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+</Project>

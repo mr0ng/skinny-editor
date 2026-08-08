@@ -1,0 +1,54 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="StereoKitEditor.App.WorkspaceTrustDialog"
+        Title="Trust StereoKit Project"
+        Width="660" Height="520"
+        MinWidth="520" MinHeight="420"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Padding="22,18" Background="#2A3037" BorderBrush="#3E4853" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="5">
+        <TextBlock FontSize="20" FontWeight="SemiBold" Text="Do you trust this project?" />
+        <TextBlock Foreground="#C7D0D9" TextWrapping="Wrap"
+                   Text="Building a .NET project can execute MSBuild targets, and the StereoKit runtime runs project code with your Windows user permissions." />
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Margin="22" Spacing="13">
+        <Border Padding="12" Background="#3A2D1C" CornerRadius="4">
+          <TextBlock Foreground="#F2BC68" TextWrapping="Wrap"
+                     Text="Only continue if you know and trust the source of this workspace. This is a process boundary, not a security sandbox." />
+        </Border>
+        <Grid ColumnDefinitions="135,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="9">
+          <TextBlock Classes="muted" Text="Project" />
+          <TextBlock Grid.Column="1" Text="{Binding ProjectName}" />
+          <TextBlock Grid.Row="1" Classes="muted" Text="Project ID" />
+          <TextBlock Grid.Row="1" Grid.Column="1" FontFamily="Consolas" FontSize="11" Text="{Binding ProjectId}" />
+          <TextBlock Grid.Row="2" Classes="muted" Text="Descriptor" />
+          <TextBlock Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" Text="{Binding ProjectLocation}" />
+          <TextBlock Grid.Row="3" Classes="muted" Text="Runtime project" />
+          <TextBlock Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" Text="{Binding RuntimeProject}" />
+          <TextBlock Grid.Row="4" Classes="muted" Text="Working directory" />
+          <TextBlock Grid.Row="4" Grid.Column="1" TextWrapping="Wrap" Text="{Binding WorkingDirectory}" />
+          <TextBlock Grid.Row="5" Classes="muted" Text="Build command" />
+          <TextBlock Grid.Row="5" Grid.Column="1" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap" Text="{Binding Command}" />
+          <TextBlock Grid.Row="6" Classes="muted" Text="Runtime arguments" />
+          <TextBlock Grid.Row="6" Grid.Column="1" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap" Text="{Binding Arguments}" />
+          <TextBlock Grid.Row="7" Classes="muted" Text="Environment names" />
+          <TextBlock Grid.Row="7" Grid.Column="1" TextWrapping="Wrap" Text="{Binding EnvironmentVariableNames}" />
+        </Grid>
+        <TextBlock Foreground="#9DA8B2" FontSize="11" TextWrapping="Wrap"
+                   Text="The decision is stored for this project ID and canonical descriptor location. Moving the workspace or changing its project ID asks again." />
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="2" Padding="16,12" Background="#20242A" BorderBrush="#363D45" BorderThickness="0,1,0,0">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button MinWidth="110" Click="HandleCancel" Content="Don't Run" />
+        <Button MinWidth="130" Classes="accent" Click="HandleTrust" Content="Trust and Run" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

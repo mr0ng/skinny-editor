@@ -1,0 +1,41 @@
+{
+  "formatVersion": 2,
+  "assetId": "70000000-0000-0000-0000-000000000080",
+  "kind": "Texture",
+  "sourcePath": "SpatialToolkit.png",
+  "normalizedPathKey": "spatialtoolkit.png",
+  "contentHash": "208162caa37efdf76181ada7acd7a1fbd0bb80ed57a6200beb7d4b1e06c0bd01",
+  "sourceLength": 1490467,
+  "sourceLastWriteUtcTicks": 639217694613228683,
+  "importerId": "skinny.texture",
+  "importerVersion": 1,
+  "importerSettings": {
+    "scale": 1,
+    "generateThumbnail": true,
+    "colorSpace": "Srgb",
+    "textureUsage": "Color",
+    "sampleMode": "Linear",
+    "addressMode": "Wrap",
+    "generateMipmaps": "Auto",
+    "alphaHint": "Auto"
+  },
+  "dependencies": [],
+  "assetDependencies": [],
+  "generatedArtifactKeys": [
+    "skinny.texture-v1-208162caa37efdf76181ada7acd7a1fbd0bb80ed57a6200beb7d4b1e06c0bd01"
+  ],
+  "diagnostics": [],
+  "thumbnailCacheKey": "skinny.texture-v1-208162caa37efdf76181ada7acd7a1fbd0bb80ed57a6200beb7d4b1e06c0bd01",
+  "bounds": null,
+  "model": null,
+  "texture": {
+    "width": 1254,
+    "height": 1254,
+    "aspectRatio": 1,
+    "hasAlpha": false,
+    "sourceFormat": "PNG"
+  },
+  "font": null,
+  "material": null,
+  "textStyle": null
+}

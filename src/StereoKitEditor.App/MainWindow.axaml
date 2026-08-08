@@ -1,0 +1,635 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:StereoKitEditor.App.Controls"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="1440"
+        d:DesignHeight="900"
+        x:Class="StereoKitEditor.App.MainWindow"
+        Title="{Binding WindowTitle}"
+        Width="1280"
+        Height="800"
+        MinWidth="800"
+        MinHeight="500">
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
+    <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
+    <KeyBinding Gesture="Ctrl+Y" Command="{Binding RedoCommand}" />
+    <KeyBinding Gesture="F6" Command="{Binding StartPlayCommand}" />
+    <KeyBinding Gesture="Shift+F6" Command="{Binding StopPlayCommand}" />
+    <KeyBinding Gesture="F7" Command="{Binding TogglePauseCommand}" />
+    <KeyBinding Gesture="F8" Command="{Binding StepPlayCommand}" />
+  </Window.KeyBindings>
+
+  <Grid x:Name="RootGrid" RowDefinitions="32,50,*,4,180,25">
+    <Border Grid.Row="0" Background="#202328" BorderBrush="#34383E" BorderThickness="0,0,0,1" ClipToBounds="True">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" ClipToBounds="True">
+        <Button Grid.Column="0" Content="Open Project" Background="Transparent" Padding="12,0" Click="OpenProject_Click" />
+        <Button Grid.Column="1" Content="Recent" Background="Transparent" Padding="12,0" Click="RecentProjects_Click" />
+        <TextBlock Grid.Column="2" Margin="10,0" VerticalAlignment="Center" Classes="muted" FontSize="11"
+                   Text="{Binding ProjectName}" />
+        <ScrollViewer Grid.Column="3" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                      ClipToBounds="True">
+          <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+            <Border Margin="2,3" Padding="8,0"
+                    Background="#40351E" BorderBrush="#8B6C28" BorderThickness="1" CornerRadius="3"
+                    IsVisible="{Binding HasMigrationProposal}">
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock VerticalAlignment="Center" Foreground="#F0C86B" FontSize="11"
+                           Text="{Binding MigrationProposalSummary}" />
+                <Button Padding="8,1" Command="{Binding ApplyMigrationProposalCommand}" Content="Apply" />
+                <Button Padding="8,1" Background="Transparent" Command="{Binding DismissMigrationProposalCommand}" Content="Later" />
+              </StackPanel>
+            </Border>
+            <Border Margin="2,3" Padding="8,0"
+                    Background="#48252A" BorderBrush="#A54854" BorderThickness="1" CornerRadius="3"
+                    IsVisible="{Binding HasCompatibilityBlock}">
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock VerticalAlignment="Center" Foreground="#F09AA5" FontSize="11"
+                           Text="{Binding CompatibilityBlockSummary}" />
+                <Button Padding="8,1" Command="{Binding RunUntestedStereoKitCommand}" Content="Run experimental" />
+                <Button Padding="8,1" Background="Transparent" Command="{Binding DismissCompatibilityBlockCommand}" Content="Cancel" />
+              </StackPanel>
+            </Border>
+            <Border Margin="2,3" Padding="8,0"
+                    Background="#48252A" BorderBrush="#A54854" BorderThickness="1" CornerRadius="3"
+                    IsVisible="{Binding HasUnresponsiveRuntime}">
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock VerticalAlignment="Center" Foreground="#F09AA5" FontSize="11"
+                           Text="{Binding UnresponsiveRuntimeSummary}" />
+                <Button Padding="8,1" Command="{Binding WaitForRuntimeCommand}" Content="Wait" />
+                <Button Padding="8,1" Command="{Binding RestartUnresponsiveRuntimeCommand}" Content="Restart" />
+                <Button Padding="8,1" Background="Transparent" Command="{Binding StopUnresponsiveRuntimeCommand}" Content="Stop" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+        <ComboBox Grid.Column="4" Width="140" Margin="3" ItemsSource="{Binding DeploymentProfiles}"
+                  SelectedItem="{Binding SelectedDeploymentProfile, Mode=TwoWay}"
+                  IsVisible="{Binding HasDeploymentProfiles}" ToolTip.Tip="Device deployment profile">
+          <ComboBox.ItemTemplate>
+            <DataTemplate><TextBlock Text="{Binding DisplayName}" /></DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button Grid.Column="5" Margin="2" Padding="10,0" Command="{Binding DeployCommand}"
+                IsVisible="{Binding HasDeploymentProfiles}" Content="Deploy" />
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Background="#292D32" BorderBrush="#3A3E45" BorderThickness="0,0,0,1" ClipToBounds="True">
+      <Grid ColumnDefinitions="Auto,Auto,8,Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,6">
+        <Button Grid.Column="0" Classes="toolbar" Command="{Binding AddCubeCommand}" ToolTip.Tip="Add cube" Content="＋ Cube" />
+        <Button Grid.Column="1" Classes="toolbar" Command="{Binding AddSphereCommand}" ToolTip.Tip="Add sphere" Content="＋ Sphere" />
+        <Button Grid.Column="3" Classes="toolbar" Command="{Binding UndoCommand}" ToolTip.Tip="Undo (Ctrl+Z)" Content="↶" />
+        <Button Grid.Column="4" Classes="toolbar" Command="{Binding RedoCommand}" ToolTip.Tip="Redo (Ctrl+Y)" Content="↷" />
+        <Button Grid.Column="5" Classes="toolbar" Command="{Binding SaveCommand}" ToolTip.Tip="Save (Ctrl+S)" Content="Save" />
+        <ScrollViewer Grid.Column="6" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+          <StackPanel HorizontalAlignment="Left" Orientation="Horizontal" Spacing="6">
+            <ComboBox Width="130" Margin="2,5" ItemsSource="{Binding SceneProfiles}"
+                      SelectedItem="{Binding SelectedSceneProfile, Mode=TwoWay}"
+                      ToolTip.Tip="Scene runtime build profile">
+              <ComboBox.ItemTemplate>
+                <DataTemplate><TextBlock Text="{Binding DisplayName}" /></DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Button Classes="toolbar" Command="{Binding RestartSceneHostCommand}"
+                    ToolTip.Tip="Build a new immutable generation and restart Scene"
+                    Content="↻ Rebuild Scene" />
+            <CheckBox VerticalAlignment="Center" IsChecked="{Binding AutoRebuildEnabled, Mode=TwoWay}"
+                      ToolTip.Tip="Debounced, opt-in rebuild when project source changes" Content="Auto source" />
+            <CheckBox VerticalAlignment="Center" IsChecked="{Binding AutoRefreshAssetsEnabled, Mode=TwoWay}"
+                      ToolTip.Tip="Debounced, opt-in reimport when source assets change" Content="Auto assets" />
+          </StackPanel>
+        </ScrollViewer>
+        <ComboBox Grid.Column="7" Width="125" Margin="2,5" ItemsSource="{Binding PlayProfiles}"
+                  SelectedItem="{Binding SelectedPlayProfile, Mode=TwoWay}"
+                  ToolTip.Tip="Play runtime build profile">
+          <ComboBox.ItemTemplate>
+            <DataTemplate><TextBlock Text="{Binding DisplayName}" /></DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button Grid.Column="8" Classes="toolbar accent" Command="{Binding StartPlayCommand}" ToolTip.Tip="Play cloned scene (F6)" Content="▶ Play" />
+        <Button Grid.Column="9" Classes="toolbar" Command="{Binding TogglePauseCommand}" ToolTip.Tip="Pause or resume (F7)" Content="{Binding PauseLabel}" />
+        <Button Grid.Column="10" Classes="toolbar" Command="{Binding StepPlayCommand}" ToolTip.Tip="Step one frame (F8)" Content="▸|" />
+        <Button Grid.Column="11" Classes="toolbar" Command="{Binding StopPlayCommand}" ToolTip.Tip="Stop Play (Shift+F6)" Content="■" />
+      </Grid>
+    </Border>
+
+    <Grid x:Name="WorkspaceGrid" Grid.Row="2" ColumnDefinitions="130,5,*,5,300" ClipToBounds="True">
+      <Border Grid.Column="0" Classes="panel" ClipToBounds="True">
+        <Grid RowDefinitions="36,*">
+          <Border Grid.Row="0" Background="#292C31" BorderBrush="#353A40" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Margin="12,0" VerticalAlignment="Center" Classes="panelTitle" Text="HIERARCHY" />
+              <Menu Grid.Column="1" Margin="0,2,5,2" Background="Transparent" VerticalAlignment="Center"
+                    ToolTip.Tip="Create GameObject">
+                <MenuItem Header="＋">
+                  <MenuItem Header="Child" Command="{Binding CreateChildCommand}"
+                            ToolTip.Tip="Create child GameObject (Ctrl+Shift+N)" />
+                  <MenuItem Header="3D Object">
+                    <MenuItem Header="Cube" Command="{Binding AddCubeCommand}" />
+                    <MenuItem Header="Sphere" Command="{Binding AddSphereCommand}" />
+                    <MenuItem Header="Quad" Command="{Binding AddQuadCommand}" />
+                  </MenuItem>
+                  <MenuItem Header="Image…" Click="CreateImageEntity_Click" />
+                  <MenuItem Header="Text" Command="{Binding AddTextCommand}" />
+                  <MenuItem Header="Spatial UI">
+                    <MenuItem Header="Panel" Command="{Binding AddUiPanelCommand}" />
+                    <Separator />
+                    <MenuItem Header="Text" Command="{Binding AddUiTextCommand}" />
+                    <MenuItem Header="Image" Command="{Binding AddUiImageCommand}" />
+                    <MenuItem Header="Spacer" Command="{Binding AddUiSpacerCommand}" />
+                    <MenuItem Header="Separator" Command="{Binding AddUiSeparatorCommand}" />
+                    <MenuItem Header="Button" Command="{Binding AddUiButtonCommand}" />
+                    <MenuItem Header="Toggle" Command="{Binding AddUiToggleCommand}" />
+                    <MenuItem Header="Slider" Command="{Binding AddUiSliderCommand}" />
+                    <MenuItem Header="Text Input" Command="{Binding AddUiTextInputCommand}" />
+                  </MenuItem>
+                </MenuItem>
+              </Menu>
+            </Grid>
+          </Border>
+          <ListBox x:Name="HierarchyList" Grid.Row="1" Margin="4"
+                    Background="Transparent"
+                    SelectionMode="Multiple"
+                    ItemsSource="{Binding Entities}"
+                    SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                    SelectionChanged="HierarchyList_SelectionChanged"
+                    KeyDown="HierarchyList_KeyDown"
+                    DragDrop.AllowDrop="True"
+                    DragDrop.DragOver="Hierarchy_DragOver"
+                    DragDrop.Drop="HierarchyRoot_Drop">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="24,*" Margin="4,3"
+                      DoubleTapped="HierarchyItem_DoubleTapped"
+                      PointerPressed="HierarchyItem_PointerPressed"
+                      PointerMoved="HierarchyItem_PointerMoved"
+                      DragDrop.AllowDrop="True"
+                      DragDrop.DragOver="Hierarchy_DragOver"
+                      DragDrop.Drop="HierarchyItem_Drop">
+                  <Grid.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="Create Child" Click="HierarchyCreateChild_Click" />
+                      <MenuItem Header="Rename" Click="HierarchyRename_Click" />
+                      <MenuItem Header="Save as Template…" Click="HierarchySaveTemplate_Click" />
+                      <MenuItem Header="Duplicate" Click="HierarchyDuplicate_Click" />
+                      <Separator />
+                      <MenuItem Header="Delete" Click="HierarchyDelete_Click" />
+                    </ContextMenu>
+                  </Grid.ContextMenu>
+                  <TextBlock Grid.Column="0" Foreground="#6CB6E8" Text="{Binding Icon}" />
+                  <TextBlock Grid.Column="1" IsVisible="{Binding IsDisplayVisible}"
+                             TextTrimming="CharacterEllipsis" Text="{Binding DisplayName}" />
+                  <TextBox Grid.Column="1" Padding="3,0" IsVisible="{Binding IsRenaming}"
+                           Text="{Binding EditName, Mode=TwoWay}"
+                           KeyDown="HierarchyRename_KeyDown"
+                           LostFocus="HierarchyRename_LostFocus" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+
+      <GridSplitter Grid.Column="1" Background="#111315" ResizeDirection="Columns"
+                    PointerReleased="LayoutSplitter_PointerReleased" />
+
+      <Border Grid.Column="2" Classes="panel" Background="#111419">
+        <Grid RowDefinitions="36,44,*,42">
+          <Border Grid.Row="0" Background="#292C31" BorderBrush="#353A40" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto" ClipToBounds="True">
+              <Button Grid.Column="0" Margin="4,3,0,3" Padding="9,0" Background="Transparent"
+                      Classes="panelTitle" Command="{Binding ShowSceneCommand}" Content="SCENE" />
+              <Button Grid.Column="1" Margin="2,3,0,3" Padding="9,0" Background="Transparent"
+                      Classes="panelTitle" Command="{Binding ShowGameCommand}" Content="GAME" />
+              <StackPanel Grid.Column="3" Margin="0,0,10,0" Orientation="Horizontal" VerticalAlignment="Center"
+                          IsVisible="{Binding IsSceneViewActive}">
+                <TextBlock Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"
+                           MaxWidth="160" Text="{Binding SceneHostStatus}" />
+                <Border Width="8" Height="8" CornerRadius="4" Margin="8,0,0,0" Background="#55C27A" />
+              </StackPanel>
+              <StackPanel Grid.Column="3" Margin="0,0,10,0" Orientation="Horizontal" VerticalAlignment="Center"
+                          IsVisible="{Binding IsGameViewActive}">
+                <TextBlock Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"
+                           MaxWidth="160" Text="{Binding PlayHostStatus}" />
+                <Border Width="8" Height="8" CornerRadius="4" Margin="8,0,0,0" Background="#E5A23C" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border Grid.Row="1" Background="#23272C" BorderBrush="#353A40" BorderThickness="0,0,0,1"
+                  IsVisible="{Binding IsSceneViewActive}" ClipToBounds="True">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+              <StackPanel Margin="5,3" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Left">
+                <ToggleButton Classes="toolbar" Padding="7,0" IsChecked="{Binding IsMoveTool, Mode=OneWay}"
+                              Command="{Binding SelectMoveToolCommand}" ToolTip.Tip="Move tool (W); Ctrl-drag a handle to duplicate" Content="W Move" />
+                <ToggleButton Classes="toolbar" Padding="7,0" IsChecked="{Binding IsRotateTool, Mode=OneWay}"
+                              Command="{Binding SelectRotateToolCommand}" ToolTip.Tip="Rotate tool (E)" Content="E Rotate" />
+                <ToggleButton Classes="toolbar" Padding="7,0" IsChecked="{Binding IsScaleTool, Mode=OneWay}"
+                              Command="{Binding SelectScaleToolCommand}" ToolTip.Tip="Scale tool (R)" Content="R Scale" />
+                <Button Padding="9,0" Command="{Binding ToggleGizmoSpaceCommand}"
+                        ToolTip.Tip="Toggle Global/Local gizmo orientation" Content="{Binding GizmoSpaceLabel}" />
+                <Button Padding="9,0" Command="{Binding ToggleActiveSnapCommand}"
+                        ToolTip.Tip="Toggle snapping for the active tool" Content="{Binding ActiveSnapLabel}" />
+                <NumericUpDown Width="66" Value="{Binding ActiveSnapAmount, Mode=TwoWay}"
+                               Minimum="0.001" Maximum="180" Increment="0.1" FormatString="0.###"
+                               ToolTip.Tip="Snap increment for the active tool" />
+                <TextBlock VerticalAlignment="Center" Classes="muted" FontSize="10" Text="{Binding ActiveSnapUnits}" />
+                <Button Padding="9,0" Command="{Binding FrameSelectionCommand}"
+                        ToolTip.Tip="Frame selected entity (F while Scene has focus)" Content="Frame" />
+                <Button Padding="7,0" Command="{Binding ToggleProjectionCommand}"
+                        ToolTip.Tip="Toggle perspective/orthographic projection" Content="{Binding ProjectionLabel}" />
+                <Button Padding="7,0" Command="{Binding ToggleGridCommand}"
+                        ToolTip.Tip="Toggle the Scene ground grid" Content="{Binding GridLabel}" />
+                <Button Padding="7,0" Command="{Binding TogglePivotModeCommand}"
+                        ToolTip.Tip="Use selection center or active-object pivot" Content="{Binding PivotModeLabel}" />
+                <ToggleButton Padding="9,0" Command="{Binding ToggleUiInteractionModeCommand}"
+                              IsChecked="{Binding IsUiPreviewMode, Mode=OneWay}"
+                              ToolTip.Tip="Edit UI selects authored elements; Preview UI lets controls receive input"
+                              Content="{Binding UiInteractionModeLabel}" />
+                <Menu Background="Transparent" VerticalAlignment="Center">
+                  <MenuItem Header="View">
+                    <MenuItem Header="Front" Command="{Binding ViewFrontCommand}" />
+                    <MenuItem Header="Right" Command="{Binding ViewRightCommand}" />
+                    <MenuItem Header="Top" Command="{Binding ViewTopCommand}" />
+                    <MenuItem Header="Isometric" Command="{Binding ViewIsometricCommand}" />
+                  </MenuItem>
+                </Menu>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+
+          <Grid Grid.Row="2" Background="#0D1014" ClipToBounds="True">
+            <controls:NativeViewportHost x:Name="SceneViewport"
+                                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                          DragDrop.AllowDrop="True"
+                                          DragDrop.DragOver="SceneViewport_DragOver"
+                                          DragDrop.Drop="SceneViewport_Drop"
+                                          IsVisible="{Binding IsSceneViewActive}" />
+            <controls:NativeViewportHost x:Name="GameViewport"
+                                         HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                         IsVisible="{Binding IsGameViewActive}" />
+          </Grid>
+
+          <Border Grid.Row="3" Background="#1C2025" BorderBrush="#333840" BorderThickness="0,1,0,0" ClipToBounds="True">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Margin="12,0" VerticalAlignment="Center" Classes="muted"
+                         TextTrimming="CharacterEllipsis" Text="{Binding SceneStatus}" />
+              <TextBlock Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Foreground="#73BCE8"
+                         IsVisible="{Binding IsSceneViewActive}" Text="{Binding SceneRenderRevision}" />
+              <TextBlock Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Foreground="#E5A23C"
+                         IsVisible="{Binding IsGameViewActive}" Text="{Binding PlayRenderRevision}" />
+            </Grid>
+          </Border>
+        </Grid>
+      </Border>
+
+      <GridSplitter Grid.Column="3" Background="#111315" ResizeDirection="Columns"
+                    PointerReleased="LayoutSplitter_PointerReleased" />
+
+      <Border Grid.Column="4" Classes="panel">
+        <Grid RowDefinitions="36,*">
+          <Border Grid.Row="0" Background="#292C31" BorderBrush="#353A40" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Margin="12,0" VerticalAlignment="Center" Classes="panelTitle" Text="INSPECTOR" />
+              <CheckBox Grid.Column="1" Margin="4,0,9,0" VerticalAlignment="Center" FontSize="10"
+                        IsChecked="{Binding ShowRuntimeInspection, Mode=TwoWay}" Content="Live" />
+            </Grid>
+          </Border>
+          <ScrollViewer Grid.Row="1">
+            <StackPanel Margin="12" Spacing="10">
+              <StackPanel Spacing="10" IsEnabled="{Binding HasSelection}">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBox Grid.Column="0" Text="{Binding SelectedName, Mode=TwoWay}" Watermark="Entity name" />
+                <CheckBox Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                          IsChecked="{Binding SelectedEnabled, Mode=TwoWay}" Content="Active" />
+              </Grid>
+              <TextBlock Classes="muted" FontSize="11" Text="{Binding SelectedKind}" />
+
+              <Border Margin="0,4,0,0" Padding="10" Background="#1B1E22" BorderBrush="#353A40" BorderThickness="1" CornerRadius="3">
+                <StackPanel Spacing="8">
+                  <TextBlock FontWeight="SemiBold" Text="Transform" />
+                  <Grid ColumnDefinitions="54,*,*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="3" RowSpacing="5"
+                        ToolTip.Tip="Type a value directly, or use the keyboard arrow keys and mouse wheel to step it.">
+                    <TextBlock Grid.Row="0" Grid.Column="1" HorizontalAlignment="Center" Classes="muted" FontSize="10" Text="X" />
+                    <TextBlock Grid.Row="0" Grid.Column="2" HorizontalAlignment="Center" Classes="muted" FontSize="10" Text="Y" />
+                    <TextBlock Grid.Row="0" Grid.Column="3" HorizontalAlignment="Center" Classes="muted" FontSize="10" Text="Z" />
+                    <TextBlock Grid.Row="1" VerticalAlignment="Center" Classes="muted" Text="Position" />
+                    <NumericUpDown Grid.Row="1" Grid.Column="1" ShowButtonSpinner="False"
+                                   Value="{Binding PositionX, Mode=TwoWay}" Increment="0.05" FormatString="0.000" />
+                    <NumericUpDown Grid.Row="1" Grid.Column="2" ShowButtonSpinner="False"
+                                   Value="{Binding PositionY, Mode=TwoWay}" Increment="0.05" FormatString="0.000" />
+                    <NumericUpDown Grid.Row="1" Grid.Column="3" ShowButtonSpinner="False"
+                                   Value="{Binding PositionZ, Mode=TwoWay}" Increment="0.05" FormatString="0.000" />
+                    <TextBlock Grid.Row="2" VerticalAlignment="Center" Classes="muted" Text="Rotation" />
+                    <NumericUpDown Grid.Row="2" Grid.Column="1" ShowButtonSpinner="False"
+                                   Value="{Binding RotationX, Mode=TwoWay}" Increment="0.05" FormatString="0.000" />
+                    <NumericUpDown Grid.Row="2" Grid.Column="2" ShowButtonSpinner="False"
+                                   Value="{Binding RotationY, Mode=TwoWay}" Increment="0.05" FormatString="0.000" />
+                    <NumericUpDown Grid.Row="2" Grid.Column="3" ShowButtonSpinner="False"
+                                   Value="{Binding RotationZ, Mode=TwoWay}" Increment="0.05" FormatString="0.000" />
+                    <TextBlock Grid.Row="3" VerticalAlignment="Center" Classes="muted" Text="Scale" />
+                    <NumericUpDown Grid.Row="3" Grid.Column="1" ShowButtonSpinner="False"
+                                   Value="{Binding ScaleX, Mode=TwoWay}" Increment="0.05" Minimum="0.01" FormatString="0.000" />
+                    <NumericUpDown Grid.Row="3" Grid.Column="2" ShowButtonSpinner="False"
+                                   Value="{Binding ScaleY, Mode=TwoWay}" Increment="0.05" Minimum="0.01" FormatString="0.000" />
+                    <NumericUpDown Grid.Row="3" Grid.Column="3" ShowButtonSpinner="False"
+                                   Value="{Binding ScaleZ, Mode=TwoWay}" Increment="0.05" Minimum="0.01" FormatString="0.000" />
+                  </Grid>
+                  <TextBlock Classes="muted" FontSize="10" Text="Rotation uses canonical quaternion X/Y/Z values; use the Scene rotation tool for direct visual editing." />
+                </StackPanel>
+              </Border>
+
+              <Border Padding="10" Background="#1B1E22" BorderBrush="#353A40" BorderThickness="1" CornerRadius="3">
+                <StackPanel Spacing="6">
+                  <TextBlock FontWeight="SemiBold" Text="Primitive Mesh Renderer" />
+                  <Grid ColumnDefinitions="82,*">
+                    <TextBlock VerticalAlignment="Center" Classes="muted" Text="Primitive" />
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding SelectedKind}" />
+                  </Grid>
+                  <TextBlock Classes="muted" FontSize="10" Text="Project components below provide typed controls, searchable references, and schema diagnostics." />
+                </StackPanel>
+              </Border>
+
+              <ItemsControl ItemsSource="{Binding InspectorComponents}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Margin="0,0,0,8" Padding="10" Background="#1B1E22"
+                            BorderBrush="#353A40" BorderThickness="1" CornerRadius="3">
+                      <StackPanel Spacing="7">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <CheckBox Grid.Column="0" Margin="0,0,7,0" VerticalAlignment="Center"
+                                    IsChecked="{Binding Enabled, Mode=TwoWay}" />
+                          <TextBlock Grid.Column="1" VerticalAlignment="Center" FontWeight="SemiBold"
+                                     Text="{Binding DisplayName}" />
+                          <Button Grid.Column="2" Padding="8,2" Command="{Binding RemoveCommand}"
+                                  ToolTip.Tip="Remove component" Content="Remove" />
+                        </Grid>
+                        <TextBlock Classes="muted" FontFamily="Consolas" FontSize="9" Text="{Binding TypeId}" />
+                        <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                   IsVisible="{Binding HasDescription}" Text="{Binding Description}" />
+                        <Border Padding="7" Background="#3B2D1C" CornerRadius="2" IsVisible="{Binding IsMissing}">
+                          <TextBlock Foreground="#F0B55A" FontSize="10" TextWrapping="Wrap"
+                                     Text="Saved data is preserved. Restore the adapter registration to edit this component." />
+                        </Border>
+
+                        <ItemsControl ItemsSource="{Binding Properties}" IsVisible="{Binding HasProperties}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                              <StackPanel Margin="0,3" Spacing="3">
+                                <Grid ColumnDefinitions="105,*" ColumnSpacing="7">
+                                  <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="muted" Text="{Binding DisplayName}" />
+                                    <TextBlock Classes="muted" FontSize="9" IsVisible="{Binding HasUnits}"
+                                               Text="{Binding Units}" />
+                                  </StackPanel>
+                                  <CheckBox Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                            IsVisible="{Binding IsBoolean}" IsEnabled="{Binding IsEditable}"
+                                            IsChecked="{Binding BooleanValue, Mode=TwoWay}" />
+                                  <ComboBox Grid.Column="1" IsVisible="{Binding IsEnum}" IsEnabled="{Binding IsEditable}"
+                                            ItemsSource="{Binding Options}"
+                                            SelectedItem="{Binding SelectedOption, Mode=TwoWay}" />
+                                  <ColorPicker Grid.Column="1" HorizontalAlignment="Stretch"
+                                               IsVisible="{Binding IsColor}" IsEnabled="{Binding IsEditable}"
+                                               Color="{Binding ColorValue, Mode=TwoWay}" />
+                                  <StackPanel Grid.Column="1" Spacing="4" IsVisible="{Binding IsReference}">
+                                    <TextBox Text="{Binding ReferenceSearch, Mode=TwoWay}"
+                                             Watermark="Search by name or path" />
+                                    <ComboBox ItemsSource="{Binding FilteredReferenceOptions}"
+                                              SelectedItem="{Binding SelectedReference, Mode=TwoWay}"
+                                              IsEnabled="{Binding IsEditable}">
+                                      <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                          <Grid ColumnDefinitions="34,*" MinHeight="30">
+                                            <Border Width="28" Height="28" Background="#15181C" CornerRadius="2">
+                                              <Image Source="{Binding Thumbnail}" Stretch="Uniform" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                              <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                                              <TextBlock Classes="muted" FontSize="9" Text="{Binding Details}"
+                                                         TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                          </Grid>
+                                        </DataTemplate>
+                                      </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                  </StackPanel>
+                                  <Grid Grid.Column="1" ColumnDefinitions="*,72" ColumnSpacing="6"
+                                        IsVisible="{Binding IsSlider}" IsEnabled="{Binding IsEditable}">
+                                    <Slider Grid.Column="0" Minimum="{Binding SliderMinimum}" Maximum="{Binding SliderMaximum}"
+                                            TickFrequency="{Binding SliderIncrement}" Value="{Binding SliderValue, Mode=OneWay}"
+                                            PointerReleased="ComponentSlider_PointerReleased" />
+                                    <TextBox Grid.Column="1" Text="{Binding ValueText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                  </Grid>
+                                  <TextBox Grid.Column="1" MinHeight="68" AcceptsReturn="True" TextWrapping="Wrap"
+                                           VerticalContentAlignment="Top" IsVisible="{Binding IsMultilineText}"
+                                           IsEnabled="{Binding IsEditable}"
+                                           Text="{Binding ValueText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                  <TextBox Grid.Column="1" IsVisible="{Binding IsPlainText}" IsEnabled="{Binding IsEditable}"
+                                           Watermark="{Binding Watermark}"
+                                           Text="{Binding ValueText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                </Grid>
+                                <TextBlock Margin="112,0,0,0" Foreground="#E66D6D" FontSize="9"
+                                           IsVisible="{Binding HasValidationError}" Text="{Binding ValidationMessage}" />
+                                <TextBlock Margin="112,0,0,0" Classes="muted" FontSize="9" TextWrapping="Wrap"
+                                           IsVisible="{Binding HasDescription}" Text="{Binding Description}" />
+                              </StackPanel>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <Border Padding="10" Background="#18242B" BorderBrush="#365769" BorderThickness="1" CornerRadius="3"
+                      IsVisible="{Binding HasModelMaterialSlots}">
+                <StackPanel Spacing="7">
+                  <TextBlock FontWeight="SemiBold" Text="Model Material Slots" />
+                  <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                             Text="Override individual model visuals. Choose the default entry to inherit the global override or the material stored in the model." />
+                  <ItemsControl ItemsSource="{Binding ModelMaterialSlots}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Margin="0,3" Spacing="3">
+                          <TextBlock Classes="muted" FontSize="10" Text="{Binding Label}" />
+                          <ComboBox ItemsSource="{Binding Materials}"
+                                    SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}">
+                            <ComboBox.ItemTemplate>
+                              <DataTemplate>
+                                <Grid ColumnDefinitions="30,*" MinHeight="28">
+                                  <Border Width="24" Height="24" Background="#11151A" CornerRadius="2">
+                                    <Image Source="{Binding Thumbnail}" Stretch="Uniform" />
+                                  </Border>
+                                  <StackPanel Grid.Column="1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Classes="muted" FontSize="9" Text="{Binding Details}" TextTrimming="CharacterEllipsis" />
+                                  </StackPanel>
+                                </Grid>
+                              </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                          </ComboBox>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+
+              <Border Padding="10" Background="#20242A" BorderBrush="#3A4652" BorderThickness="1" CornerRadius="3">
+                <StackPanel Spacing="7">
+                  <TextBlock FontWeight="SemiBold" Text="Add Component" />
+                  <ComboBox ItemsSource="{Binding AvailableComponents}"
+                            SelectedItem="{Binding SelectedComponentToAdd, Mode=TwoWay}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding Label}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <Button HorizontalAlignment="Stretch" Command="{Binding AddSelectedComponentCommand}"
+                          Content="＋ Add Selected Component" />
+                  <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" Text="{Binding AddComponentHint}" />
+                </StackPanel>
+              </Border>
+              </StackPanel>
+
+              <Border Padding="10" Background="#18242B" BorderBrush="#365769" BorderThickness="1" CornerRadius="3"
+                      IsVisible="{Binding ShowRuntimeInspection}">
+                <StackPanel Spacing="6">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock FontWeight="SemiBold" Text="Runtime inspection" />
+                    <TextBlock Grid.Column="1" Foreground="#73BCE8" FontSize="10" Text="LIVE · READ ONLY" />
+                  </Grid>
+                  <TextBlock Text="{Binding RuntimePerformanceSummary}" />
+                  <TextBlock Classes="muted" FontSize="10" Text="{Binding RuntimeCountsSummary}" />
+                  <TextBlock Classes="muted" FontSize="10" Text="{Binding RuntimeMemorySummary}" />
+                  <Separator Margin="0,3" />
+                  <TextBlock FontWeight="SemiBold" FontSize="11" Text="{Binding RuntimeInspectionTitle}" />
+                  <ItemsControl ItemsSource="{Binding RuntimeComponentStates}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Grid Margin="0,2" ColumnDefinitions="18,*,Auto">
+                          <TextBlock Foreground="#6ED68A" Text="{Binding Indicator}" />
+                          <StackPanel Grid.Column="1">
+                            <TextBlock FontSize="10" Text="{Binding DisplayName}" />
+                            <TextBlock Classes="muted" FontFamily="Consolas" FontSize="8" Text="{Binding TypeId}" />
+                          </StackPanel>
+                          <TextBlock Grid.Column="2" Margin="7,0,0,0" VerticalAlignment="Center"
+                                     Classes="muted" FontSize="9" Text="{Binding State}" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <GridSplitter Grid.Row="3" Background="#111315" ResizeDirection="Rows"
+                  PointerReleased="LayoutSplitter_PointerReleased" />
+
+    <Grid x:Name="BottomGrid" Grid.Row="4" ColumnDefinitions="*,5,1.2*">
+      <Border Grid.Column="0" Classes="panel">
+        <Grid RowDefinitions="34,32,*">
+          <Border Background="#292C31" BorderBrush="#353A40" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
+              <TextBlock Margin="12,0" VerticalAlignment="Center" Classes="panelTitle" Text="PROJECT" />
+              <Button Grid.Column="1" Margin="0,4,4,4" Padding="9,0" Click="CreateAssetFolder_Click" Content="+ Folder" />
+              <Menu Grid.Column="2" Margin="0,3,4,3" Background="Transparent">
+                <MenuItem Header="＋ Asset">
+                  <MenuItem Header="Material…" Click="CreateMaterialAsset_Click" />
+                  <MenuItem Header="Text Style…" Click="CreateTextStyleAsset_Click" />
+                </MenuItem>
+              </Menu>
+              <Button Grid.Column="3" Margin="0,4,4,4" Padding="9,0" Click="ImportVisualAsset_Click" Content="Import…" />
+              <Button Grid.Column="4" Margin="0,4,6,4" Padding="9,0" Command="{Binding RefreshAssetsCommand}" Content="Refresh" />
+            </Grid>
+          </Border>
+          <TextBox Grid.Row="1" Margin="6,3" Padding="7,2" Watermark="Search assets, folders, scenes…"
+                   Text="{Binding ProjectSearchText, Mode=TwoWay}" />
+          <ListBox x:Name="ProjectList" Grid.Row="2" Margin="4" Background="Transparent"
+                   ItemsSource="{Binding ProjectFiles}" KeyDown="ProjectList_KeyDown">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="66,38,*,90" Margin="5,4"
+                      ToolTip.Tip="{Binding Details}"
+                      DoubleTapped="ProjectItem_DoubleTapped"
+                      PointerPressed="ProjectItem_PointerPressed"
+                      PointerMoved="ProjectItem_PointerMoved">
+                  <Grid.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="Create / Apply in Scene" Click="ProjectCreateEntity_Click" />
+                      <MenuItem Header="Edit Asset Settings…" Click="ProjectEditAsset_Click" />
+                      <Separator />
+                      <MenuItem Header="Rename" Click="ProjectRename_Click" />
+                      <MenuItem Header="Move…" Click="ProjectMove_Click" />
+                      <MenuItem Header="Delete" Click="ProjectDelete_Click" />
+                    </ContextMenu>
+                  </Grid.ContextMenu>
+                  <TextBlock Classes="muted" Text="{Binding Group}" />
+                  <Border Grid.Column="1" Width="32" Height="32" Margin="2,0,4,0" Background="#171A1F" CornerRadius="2">
+                    <Grid>
+                      <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                      <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#73BCE8"
+                                 FontSize="15" Text="{Binding Icon}" />
+                    </Grid>
+                  </Border>
+                  <Grid Grid.Column="2" VerticalAlignment="Center">
+                    <StackPanel IsVisible="{Binding IsDisplayVisible}">
+                      <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Classes="muted" FontSize="9" Text="{Binding Details}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <TextBox IsVisible="{Binding IsRenaming}" Text="{Binding EditName, Mode=TwoWay}"
+                             KeyDown="ProjectRenameTextBox_KeyDown" LostFocus="ProjectRenameTextBox_LostFocus" />
+                  </Grid>
+                  <TextBlock Grid.Column="3" HorizontalAlignment="Right" VerticalAlignment="Center"
+                             Classes="muted" FontSize="10" Text="{Binding Kind}" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+
+      <GridSplitter Grid.Column="1" Background="#111315" ResizeDirection="Columns"
+                    PointerReleased="LayoutSplitter_PointerReleased" />
+
+      <Border Grid.Column="2" Classes="panel">
+        <Grid RowDefinitions="34,*">
+          <Border Background="#292C31" BorderBrush="#353A40" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Margin="12,0" VerticalAlignment="Center" Classes="panelTitle" Text="CONSOLE" />
+              <Button Grid.Column="1" Margin="0,4,6,4" Padding="10,0" Command="{Binding ClearConsoleCommand}" Content="Clear" />
+            </Grid>
+          </Border>
+          <ListBox Grid.Row="1" Margin="4" Background="Transparent" ItemsSource="{Binding ConsoleEntries}">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="62,64,*" Margin="5,3">
+                  <TextBlock Classes="muted" FontFamily="Consolas" FontSize="11" Text="{Binding Time}" />
+                  <TextBlock Grid.Column="1" Foreground="#73BCE8" FontSize="11" Text="{Binding Level}" />
+                  <TextBlock Grid.Column="2" TextWrapping="Wrap" FontSize="11" Text="{Binding Message}" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="5" Background="#1875A8">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Margin="10,0" VerticalAlignment="Center" FontSize="11" Foreground="White" Text="{Binding StatusMessage}" />
+        <TextBlock Grid.Column="1" Margin="10,0" VerticalAlignment="Center" FontSize="11" Foreground="#D8F1FF" Text="StereoKit 0.4 preview · protocol 2.1" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

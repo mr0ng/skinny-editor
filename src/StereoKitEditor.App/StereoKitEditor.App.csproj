@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>SKinny.Editor</AssemblyName>
+    <RootNamespace>StereoKitEditor.App</RootNamespace>
+    <AssemblyTitle>SKinny Editor</AssemblyTitle>
+    <Product>SKinny Editor</Product>
+    <Description>A visual editor for StereoKit.</Description>
+    <ApplicationIcon>Assets\SKinny.Editor.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Controls.ColorPicker" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.18" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\StereoKitEditor.Adapter.Abstractions\StereoKitEditor.Adapter.Abstractions.csproj" />
+    <ProjectReference Include="..\StereoKitEditor.Assets\StereoKitEditor.Assets.csproj" />
+    <ProjectReference Include="..\StereoKitEditor.Core\StereoKitEditor.Core.csproj" />
+    <ProjectReference Include="..\StereoKitEditor.ProjectSystem\StereoKitEditor.ProjectSystem.csproj" />
+    <ProjectReference Include="..\StereoKitEditor.Protocol\StereoKitEditor.Protocol.csproj" />
+    <ProjectReference Include="..\StereoKitEditor.Scene\StereoKitEditor.Scene.csproj" />
+    <ProjectReference Include="..\StereoKitEditor.PreviewHost\StereoKitEditor.PreviewHost.csproj"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>

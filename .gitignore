@@ -28,3 +28,8 @@ coverage/
 *.pem
 *.key
 *.snk
+
+# Private project planning, machine-specific notes, and local handoffs
+.private/
+*.local.md
+*.private.md

@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="StereoKitEditor.App.ProjectLauncherWindow"
+        Title="SKinny Editor"
+        Width="760" Height="520"
+        MinWidth="580" MinHeight="400"
+        WindowStartupLocation="CenterScreen">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Border Padding="24,20" Background="#25313A" BorderBrush="#3D5362" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="5">
+        <TextBlock FontSize="25" FontWeight="SemiBold" Text="SKinny Editor" />
+        <TextBlock Foreground="#C2D2DC" Text="A visual editor for StereoKit." />
+      </StackPanel>
+    </Border>
+    <Border Grid.Row="1" Margin="18,14,18,5" Padding="10" Background="#3B2D1C" CornerRadius="3"
+            IsVisible="{Binding HasStartupError}">
+      <TextBlock Foreground="#F0B55A" FontSize="10" TextWrapping="Wrap" Text="{Binding StartupError}" />
+    </Border>
+    <Grid Grid.Row="2" Margin="18,8" RowDefinitions="Auto,*">
+      <TextBlock FontSize="16" FontWeight="SemiBold" Text="Recent projects" />
+      <ListBox x:Name="ProjectsList" Grid.Row="1" Margin="0,8,0,0" ItemsSource="{Binding Projects}"
+               DoubleTapped="HandleDoubleTapped">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid Margin="7" ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                <TextBlock Classes="muted" FontSize="10" Text="{Binding Location}" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <TextBlock Grid.Column="1" Margin="10,0" VerticalAlignment="Center" Classes="muted"
+                         IsVisible="{Binding !Exists}" Text="Missing" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
+    <Border Grid.Row="3" Padding="14" Background="#20242A" BorderBrush="#363D45" BorderThickness="0,1,0,0">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button MinWidth="120" Click="HandleBrowse" Content="Browse…" />
+        <Button MinWidth="120" Classes="accent" Click="HandleOpen" Content="Open Selected" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

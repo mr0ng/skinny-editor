@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "assetId": "70000000-0000-0000-0000-000000000081",
+  "shaderFamily": "Unlit",
+  "baseColorTextureId": "70000000-0000-0000-0000-000000000080",
+  "normalTextureId": null,
+  "metalRoughTextureId": null,
+  "occlusionTextureId": null,
+  "emissionTextureId": null,
+  "colorTint": { "r": 1, "g": 1, "b": 1, "a": 1 },
+  "metallic": 0,
+  "roughness": 1,
+  "emissionFactor": 0,
+  "uvScale": { "x": 1, "y": 1 },
+  "uvOffset": { "x": 0, "y": 0 },
+  "transparency": "Opaque",
+  "alphaCutoff": 0.5,
+  "cull": "Back",
+  "depthWrite": true,
+  "depthTest": "Less",
+  "queueOffset": 0
+}

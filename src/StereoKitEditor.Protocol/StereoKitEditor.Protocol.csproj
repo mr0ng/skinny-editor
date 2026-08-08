@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageId>SKinny.Editor.Protocol</PackageId>
+    <Version>0.3.0-preview.1</Version>
+    <Authors>SKinny Editor contributors</Authors>
+    <Description>Versioned local editor/runtime protocol for SKinny Editor projects.</Description>
+    <PackageTags>StereoKit;editor;protocol</PackageTags>
+    <PackageReadmeFile>PACKAGE.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\docs\PACKAGE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\StereoKitEditor.Adapter.Abstractions\StereoKitEditor.Adapter.Abstractions.csproj" />
+    <ProjectReference Include="..\StereoKitEditor.Scene\StereoKitEditor.Scene.csproj" />
+  </ItemGroup>
+</Project>

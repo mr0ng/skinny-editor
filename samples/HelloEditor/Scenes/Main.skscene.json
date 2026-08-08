@@ -1,0 +1,327 @@
+{
+  "formatVersion": 2,
+  "sceneId": "19663184-c28b-4b13-90c4-fb4005f6a01b",
+  "name": "Hello Editor",
+  "roots": [
+    {
+      "id": "a8be9770-fcc5-4de9-9014-599bb7ca9b2f",
+      "name": "Welcome Cube",
+      "enabled": true,
+      "components": [
+        {
+          "id": "4b3d31e5-49cb-40d2-af78-feb82d5b4231",
+          "typeId": "stereokit.transform",
+          "schemaVersion": 1,
+          "enabled": true,
+          "data": {
+            "position": [
+              -0.22037702798843384,
+              0.12959352135658264,
+              -0.5457110345363617
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "id": "0fe0db38-06d9-4f6c-aab3-d5633910a842",
+          "typeId": "stereokit.primitive-mesh-renderer",
+          "schemaVersion": 2,
+          "enabled": true,
+          "data": {
+            "primitive": "Cube",
+            "materialAssetId": "70000000-0000-0000-0000-000000000081",
+            "baseColorTextureOverrideId": null,
+            "color": [
+              0.2,
+              0.62,
+              0.92,
+              1
+            ],
+            "visible": true
+          }
+        },
+        {
+          "id": "7374d34d-b463-4b6e-9042-b7550acd3ac1",
+          "typeId": "com.example.marker",
+          "schemaVersion": 2,
+          "enabled": true,
+          "data": {
+            "color": [
+              0.33725490196078434,
+              0.7215686274509804,
+              0.03137254901960784,
+              1
+            ],
+            "size": 0.12,
+            "verticalOffset": 0.18,
+            "visible": true,
+            "shape": "Cube",
+            "label": "Marker"
+          }
+        }
+      ],
+      "children": []
+    },
+    {
+      "id": "2d177e58-7c9a-4942-a5c4-0d705c62a736",
+      "name": "Purple Sphere",
+      "enabled": true,
+      "components": [
+        {
+          "id": "f16de4dc-5c7a-4f4b-beeb-b233ace60361",
+          "typeId": "stereokit.transform",
+          "schemaVersion": 1,
+          "enabled": true,
+          "data": {
+            "position": [
+              0.3,
+              0.2872303456068039,
+              -0.7
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              0.75,
+              0.75,
+              0.75
+            ]
+          }
+        },
+        {
+          "id": "9234572f-2742-457c-90de-93e82ebd0915",
+          "typeId": "stereokit.primitive-mesh-renderer",
+          "schemaVersion": 2,
+          "enabled": true,
+          "data": {
+            "primitive": "Sphere",
+            "materialAssetId": null,
+            "baseColorTextureOverrideId": null,
+            "color": [
+              0.62,
+              0.35,
+              0.92,
+              1
+            ],
+            "visible": true
+          }
+        }
+      ],
+      "children": []
+    },
+    {
+      "id": "70000000-0000-0000-0000-000000000001",
+      "name": "Phase 5 Title",
+      "enabled": true,
+      "components": [
+        {
+          "id": "70000000-0000-0000-0000-000000000002",
+          "typeId": "stereokit.transform",
+          "schemaVersion": 1,
+          "enabled": true,
+          "data": { "position": [-0.32, 0.42, -0.72], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000003",
+          "typeId": "stereokit.text-renderer",
+          "schemaVersion": 1,
+          "enabled": true,
+          "data": {
+            "text": "SKinny visual content",
+            "textStyleAssetId": "70000000-0000-0000-0000-000000000082",
+            "fontAssetId": null,
+            "characterHeight": 0.035,
+            "color": [1, 1, 1, 1],
+            "bounds": [0.6, 0.1],
+            "fit": "Wrap",
+            "horizontalAlignment": "Left",
+            "verticalAlignment": "Top",
+            "pivot": [0, 0],
+            "billboard": "None",
+            "surfacePreset": "WorldTransparent",
+            "uvScale": [1, 1],
+            "uvOffset": [0, 0],
+            "uvScale": [1, 1],
+            "uvOffset": [0, 0],
+            "visible": true
+          }
+        }
+      ],
+      "children": []
+    },
+    {
+      "id": "70000000-0000-0000-0000-000000000010",
+      "name": "Interactive Status Panel",
+      "enabled": true,
+      "components": [
+        {
+          "id": "70000000-0000-0000-0000-000000000011",
+          "typeId": "stereokit.transform",
+          "schemaVersion": 1,
+          "enabled": true,
+          "data": { "position": [0.45, 0.05, -0.75], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000012",
+          "typeId": "stereokit.ui-panel",
+          "schemaVersion": 1,
+          "enabled": true,
+          "data": {
+            "title": "Project Controls",
+            "kind": "Window",
+            "size": [0.48, 0.52],
+            "autoWidth": false,
+            "autoHeight": false,
+            "movableInGame": true,
+            "farInteraction": true,
+            "visible": true
+          }
+        }
+      ],
+      "children": [
+        {
+          "id": "70000000-0000-0000-0000-000000000020",
+          "name": "Instructions",
+          "enabled": true,
+          "components": [
+            { "id": "70000000-0000-0000-0000-000000000021", "typeId": "stereokit.transform", "schemaVersion": 1, "enabled": true, "data": { "position": [0,0,0], "rotation": [0,0,0,1], "scale": [1,1,1] } },
+            { "id": "70000000-0000-0000-0000-000000000022", "typeId": "stereokit.ui-rect", "schemaVersion": 1, "enabled": true, "data": { "layoutMode": "Flow", "preferredSize": [0.4,0.065], "minimumSize": [0,0], "margin": [0,0,0,0.008], "padding": [0,0,0,0], "sameLine": false, "lineBreak": true, "anchor": "TopLeft", "pivot": [0,0], "position": [0,0], "size": [0.4,0.065], "stretchWidth": true, "stretchHeight": false, "clip": false } },
+            { "id": "70000000-0000-0000-0000-000000000023", "typeId": "stereokit.ui-text", "schemaVersion": 1, "enabled": true, "data": { "text": "Use Edit UI to select elements, then Preview UI to exercise design values.", "textStyleAssetId": null, "alignment": "Left", "wrap": true, "color": [1,1,1,1] } }
+          ],
+          "children": []
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000025",
+          "name": "Panel Image",
+          "enabled": true,
+          "components": [
+            { "id": "70000000-0000-0000-0000-000000000026", "typeId": "stereokit.transform", "schemaVersion": 1, "enabled": true, "data": { "position": [0,0,0], "rotation": [0,0,0,1], "scale": [1,1,1] } },
+            { "id": "70000000-0000-0000-0000-000000000027", "typeId": "stereokit.ui-rect", "schemaVersion": 1, "enabled": true, "data": { "layoutMode": "Flow", "preferredSize": [0.4,0.1], "minimumSize": [0,0], "margin": [0,0,0,0.008], "padding": [0,0,0,0], "sameLine": false, "lineBreak": true, "anchor": "TopLeft", "pivot": [0,0], "position": [0,0], "size": [0.4,0.1], "stretchWidth": true, "stretchHeight": false, "clip": false } },
+            { "id": "70000000-0000-0000-0000-000000000028", "typeId": "stereokit.ui-image", "schemaVersion": 1, "enabled": true, "data": { "textureAssetId": "70000000-0000-0000-0000-000000000080", "sizingMode": "Fit", "tint": [1,1,1,1] } }
+          ],
+          "children": []
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000030",
+          "name": "Enabled Toggle",
+          "enabled": true,
+          "components": [
+            { "id": "70000000-0000-0000-0000-000000000031", "typeId": "stereokit.transform", "schemaVersion": 1, "enabled": true, "data": { "position": [0,0,0], "rotation": [0,0,0,1], "scale": [1,1,1] } },
+            { "id": "70000000-0000-0000-0000-000000000032", "typeId": "stereokit.ui-rect", "schemaVersion": 1, "enabled": true, "data": { "layoutMode": "Flow", "preferredSize": [0.4,0.045], "minimumSize": [0,0], "margin": [0,0,0,0.006], "padding": [0,0,0,0], "sameLine": false, "lineBreak": true, "anchor": "TopLeft", "pivot": [0,0], "position": [0,0], "size": [0.4,0.045], "stretchWidth": true, "stretchHeight": false, "clip": false } },
+            { "id": "70000000-0000-0000-0000-000000000033", "typeId": "stereokit.ui-toggle", "schemaVersion": 1, "enabled": true, "data": { "label": "Enabled", "bindingId": "hello.enabled", "designValue": true, "enabled": true } }
+          ],
+          "children": []
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000040",
+          "name": "Amount Slider",
+          "enabled": true,
+          "components": [
+            { "id": "70000000-0000-0000-0000-000000000041", "typeId": "stereokit.transform", "schemaVersion": 1, "enabled": true, "data": { "position": [0,0,0], "rotation": [0,0,0,1], "scale": [1,1,1] } },
+            { "id": "70000000-0000-0000-0000-000000000042", "typeId": "stereokit.ui-rect", "schemaVersion": 1, "enabled": true, "data": { "layoutMode": "Flow", "preferredSize": [0.4,0.06], "minimumSize": [0,0], "margin": [0,0,0,0.006], "padding": [0,0,0,0], "sameLine": false, "lineBreak": true, "anchor": "TopLeft", "pivot": [0,0], "position": [0,0], "size": [0.4,0.06], "stretchWidth": true, "stretchHeight": false, "clip": false } },
+            { "id": "70000000-0000-0000-0000-000000000043", "typeId": "stereokit.ui-slider", "schemaVersion": 1, "enabled": true, "data": { "label": "Amount", "bindingId": "hello.amount", "designValue": 0.5, "minimum": 0, "maximum": 1, "increment": 0.05, "units": "%", "enabled": true } }
+          ],
+          "children": []
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000050",
+          "name": "Message Input",
+          "enabled": true,
+          "components": [
+            { "id": "70000000-0000-0000-0000-000000000051", "typeId": "stereokit.transform", "schemaVersion": 1, "enabled": true, "data": { "position": [0,0,0], "rotation": [0,0,0,1], "scale": [1,1,1] } },
+            { "id": "70000000-0000-0000-0000-000000000052", "typeId": "stereokit.ui-rect", "schemaVersion": 1, "enabled": true, "data": { "layoutMode": "Flow", "preferredSize": [0.4,0.075], "minimumSize": [0,0], "margin": [0,0,0,0.006], "padding": [0,0,0,0], "sameLine": false, "lineBreak": true, "anchor": "TopLeft", "pivot": [0,0], "position": [0,0], "size": [0.4,0.075], "stretchWidth": true, "stretchHeight": false, "clip": false } },
+            { "id": "70000000-0000-0000-0000-000000000053", "typeId": "stereokit.ui-text-input", "schemaVersion": 1, "enabled": true, "data": { "label": "Message", "bindingId": "hello.message", "designValue": "Preview text", "placeholder": "Type a message", "maximumLength": 256, "enabled": true } }
+          ],
+          "children": []
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000060",
+          "name": "Reset Button",
+          "enabled": true,
+          "components": [
+            { "id": "70000000-0000-0000-0000-000000000061", "typeId": "stereokit.transform", "schemaVersion": 1, "enabled": true, "data": { "position": [0,0,0], "rotation": [0,0,0,1], "scale": [1,1,1] } },
+            { "id": "70000000-0000-0000-0000-000000000062", "typeId": "stereokit.ui-rect", "schemaVersion": 1, "enabled": true, "data": { "layoutMode": "Flow", "preferredSize": [0.4,0.05], "minimumSize": [0,0], "margin": [0,0,0,0], "padding": [0,0,0,0], "sameLine": false, "lineBreak": true, "anchor": "TopLeft", "pivot": [0,0], "position": [0,0], "size": [0.4,0.05], "stretchWidth": true, "stretchHeight": false, "clip": false } },
+            { "id": "70000000-0000-0000-0000-000000000063", "typeId": "stereokit.ui-button", "schemaVersion": 1, "enabled": true, "data": { "label": "Reset in Game", "imageTextureAssetId": null, "actionId": "hello.reset", "enabled": true } }
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "70000000-0000-0000-0000-000000000070",
+      "name": "Quad Surface",
+      "enabled": true,
+      "components": [
+        {
+          "id": "70000000-0000-0000-0000-000000000071",
+          "typeId": "stereokit.transform",
+          "schemaVersion": 1,
+          "enabled": true,
+          "data": { "position": [-0.48, -0.18, -0.72], "rotation": [0, 0, 0, 1], "scale": [1.5, 1, 1] }
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000072",
+          "typeId": "stereokit.primitive-mesh-renderer",
+          "schemaVersion": 2,
+          "enabled": true,
+          "data": {
+            "primitive": "Quad",
+            "materialAssetId": "70000000-0000-0000-0000-000000000081",
+            "baseColorTextureOverrideId": null,
+            "color": [0.12, 0.62, 0.52, 1],
+            "uvScale": [1, 1],
+            "uvOffset": [0, 0],
+            "visible": true
+          }
+        }
+      ],
+      "children": []
+    },
+    {
+      "id": "70000000-0000-0000-0000-000000000090",
+      "name": "Standalone Image",
+      "enabled": true,
+      "components": [
+        {
+          "id": "70000000-0000-0000-0000-000000000091",
+          "typeId": "stereokit.transform",
+          "schemaVersion": 1,
+          "enabled": true,
+          "data": { "position": [0.06, -0.28, -0.74], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000092",
+          "typeId": "stereokit.image-renderer",
+          "schemaVersion": 1,
+          "enabled": true,
+          "data": {
+            "textureAssetId": "70000000-0000-0000-0000-000000000080",
+            "size": [0.24, 0.24],
+            "sizingMode": "PreserveAspect",
+            "pixelsPerMeter": 1000,
+            "pivot": [0.5, 0.5],
+            "tint": [1, 1, 1, 1],
+            "doubleSided": true,
+            "billboard": "None",
+            "surfacePreset": "WorldTransparent",
+            "visible": true
+          }
+        }
+      ],
+      "children": []
+    }
+  ]
+}

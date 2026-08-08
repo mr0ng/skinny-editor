@@ -1,0 +1,47 @@
+{
+  "formatVersion": 2,
+  "assetId": "70000000-0000-0000-0000-000000000082",
+  "kind": "TextStyle",
+  "sourcePath": "Heading.sktextstyle.json",
+  "normalizedPathKey": "heading.sktextstyle.json",
+  "contentHash": "dfc6a86eb3e36bbdeb2d31a6bbfbe9199d55499048d70ecb05b67673764a8cec",
+  "sourceLength": 208,
+  "sourceLastWriteUtcTicks": 639217697897357641,
+  "importerId": "skinny.text-style",
+  "importerVersion": 1,
+  "importerSettings": {
+    "scale": 1,
+    "generateThumbnail": true,
+    "colorSpace": "Srgb",
+    "textureUsage": "Color",
+    "sampleMode": "Linear",
+    "addressMode": "Wrap",
+    "generateMipmaps": "Auto",
+    "alphaHint": "Auto"
+  },
+  "dependencies": [],
+  "assetDependencies": [],
+  "generatedArtifactKeys": [
+    "skinny.text-style-v1-dfc6a86eb3e36bbdeb2d31a6bbfbe9199d55499048d70ecb05b67673764a8cec"
+  ],
+  "diagnostics": [],
+  "thumbnailCacheKey": "skinny.text-style-v1-dfc6a86eb3e36bbdeb2d31a6bbfbe9199d55499048d70ecb05b67673764a8cec",
+  "bounds": null,
+  "model": null,
+  "texture": null,
+  "font": null,
+  "material": null,
+  "textStyle": {
+    "formatVersion": 1,
+    "assetId": "70000000-0000-0000-0000-000000000082",
+    "fontAssetId": null,
+    "characterHeight": 0.05,
+    "color": {
+      "r": 0.45,
+      "g": 0.82,
+      "b": 1,
+      "a": 1
+    },
+    "materialAssetId": null
+  }
+}

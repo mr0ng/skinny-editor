@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="StereoKitEditor.App.RecentProjectsDialog"
+        Title="Recent projects"
+        Width="680" Height="420"
+        MinWidth="520" MinHeight="300"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <TextBlock Margin="18,16,18,10" FontSize="18" FontWeight="SemiBold" Text="Recent StereoKit projects" />
+    <ListBox x:Name="ProjectsList" Grid.Row="1" Margin="14,4" ItemsSource="{Binding}"
+             DoubleTapped="HandleDoubleTapped">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <Grid Margin="5" ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+              <TextBlock Classes="muted" FontSize="10" Text="{Binding Location}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <TextBlock Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Classes="muted"
+                       Text="Missing" IsVisible="{Binding !Exists}" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <Border Grid.Row="2" Padding="12" Background="#20242A" BorderBrush="#363D45" BorderThickness="0,1,0,0">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button MinWidth="90" Click="HandleCancel" Content="Cancel" />
+        <Button MinWidth="100" Classes="accent" Click="HandleOpen" Content="Open" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>
