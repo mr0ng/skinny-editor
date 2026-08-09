@@ -29,8 +29,8 @@ planning notes.
 
 - [Public roadmap](roadmap/README.md) — delivered capabilities, current product
   focus, later work, and deliberately deferred scope.
-- [Windows product entry and onboarding](roadmap/product-entry-and-onboarding.md)
-  — installer, Project Hub, new-project creation, and existing-project import.
+- [Windows project entry and onboarding](roadmap/product-entry-and-onboarding.md)
+  — launcher workflows, new-project creation, and existing-project import.
 - [Visual content and spatial UI](roadmap/visual-content-and-spatial-ui.md) —
   delivered visual-authoring architecture and remaining usability work.
 

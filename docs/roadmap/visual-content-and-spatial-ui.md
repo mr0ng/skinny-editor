@@ -390,7 +390,7 @@ Scene Edit never invokes project actions. Scene Preview uses design-time values 
 
 ## Delivered implementation sequence
 
-Phase 5 was delivered in dependency order. Phase 5A remained independent of installer/signing work in Phase 4; Phase 5B was built after the texture/text foundations and runtime cache were established.
+Phase 5 was delivered in dependency order. Phase 5A remained independent of product-entry work in Phase 4; Phase 5B was built after the texture/text foundations and runtime cache were established.
 
 ### Phase 5.0 — contracts, fixtures, and migration spine (delivered)
 

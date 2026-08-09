@@ -1,8 +1,8 @@
 # Installation and onboarding
 
-Status: **current Windows preview workflow; transactional existing-project import available**
+Status: **current Windows preview workflow; starter generation and transactional existing-project import available**
 
-This document describes what works in the current portable build. The launcher can generate a project from the bundled starter template, and existing StereoKit projects can be inspected and scaffolded without running MSBuild or project code. The remaining product phase adds the installer, desktop integration, full Project Hub, broader template/version selection, and deeper trust-gated onboarding validation. See [Windows installation, Project Hub, and project onboarding](../roadmap/product-entry-and-onboarding.md).
+This document describes the supported portable build. The launcher can generate a project from the bundled starter template, and existing StereoKit projects can be inspected and scaffolded without running MSBuild or project code. The remaining product phase completes the Project Hub, broadens template/version selection, and adds deeper trust-gated onboarding validation. Installer, signing, and automatic-update work is deferred while the portable ZIP remains sufficient. See [Windows project entry and onboarding](../roadmap/product-entry-and-onboarding.md).
 
 ## Install a packaged build
 
@@ -26,7 +26,7 @@ under `artifacts/distribution`. A packaged editor does not require the .NET
 desktop runtime, but building StereoKit projects still requires the SDK and
 workloads used by those projects.
 
-The package is a portable Windows preview, not a signed installer. Extract it to a user-writable directory and run `SKinny.Editor.exe`.
+The package is a portable Windows preview. Extract it to a user-writable directory and run `SKinny.Editor.exe`.
 
 The ZIP includes `examples\HelloEditor\HelloEditor.skproject.json`. It restores from the bundled `sdk` package feed plus NuGet.org, so a new user can open, trust, build, author, and play the example without a source checkout. A .NET SDK is still required to build the example project.
 
@@ -39,6 +39,16 @@ SKinny.Editor.exe --project .\Example\Example.skproject.json
 ```
 
 The editor asks for workspace trust before invoking MSBuild or running project code. Review the project, command, working directory, arguments, and environment-variable names. Trust is keyed by project ID plus canonical descriptor location.
+
+## Create a starter project
+
+The packaged editor's no-project launcher includes **New Project**. Choose a C#-safe project name and an existing parent location. SKinny Editor creates a new folder containing a solution, normal StereoKit application project, standalone entry point, editor adapter, descriptor, initial scene, assets folder, and project README.
+
+Creation is staged and never overwrites an existing destination. Every generated project and scene receives fresh IDs. The matching preview SDK packages are copied from the packaged editor into the project's `.skinny/sdk` feed so the generated project remains buildable if its folder is moved.
+
+After creation, SKinny Editor opens the descriptor and uses the normal trust boundary. Trusting the project starts the existing restore/build and Scene launch workflow; press `F6` to verify the isolated Game session. Template/version selection, dedicated creation progress, and automatic Scene/Play probing remain planned follow-ups.
+
+The New Project action requires a packaged editor that contains the bundled `sdk` feed. A source build without packaged SDK files reports how to create a packaged build instead of generating a project that cannot restore.
 
 ## Import an existing StereoKit project
 
