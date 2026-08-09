@@ -1,8 +1,8 @@
 # Installation and onboarding
 
-Status: **current Windows preview workflow; full product onboarding planned in Phase 4**
+Status: **current Windows preview workflow; transactional existing-project import available**
 
-This document describes what works in the current portable build. The next product phase adds the installer, desktop integration, Project Hub, new-project generation, and non-destructive onboarding of existing StereoKit projects. See [Windows installation, Project Hub, and project onboarding](../roadmap/product-entry-and-onboarding.md).
+This document describes what works in the current portable build. The launcher can generate a project from the bundled starter template, and existing StereoKit projects can be inspected and scaffolded without running MSBuild or project code. The remaining product phase adds the installer, desktop integration, full Project Hub, broader template/version selection, and deeper trust-gated onboarding validation. See [Windows installation, Project Hub, and project onboarding](../roadmap/product-entry-and-onboarding.md).
 
 ## Install a packaged build
 
@@ -39,6 +39,37 @@ SKinny.Editor.exe --project .\Example\Example.skproject.json
 ```
 
 The editor asks for workspace trust before invoking MSBuild or running project code. Review the project, command, working directory, arguments, and environment-variable names. Trust is keyed by project ID plus canonical descriptor location.
+
+## Import an existing StereoKit project
+
+From the no-project launcher, choose **Import StereoKit Project…** and select a
+`.sln` or `.csproj`. The first pass is safe inspection only: it reads solution,
+project, package, target-framework, source-shape, and existing descriptor
+metadata without evaluating MSBuild targets, restoring packages, loading an
+assembly, or running the application.
+
+The compatibility report separates content that can become authorable from
+procedural draw calls, dynamic objects, services, and UI that remain opaque.
+For supported projects, choose and review one of two integration shapes:
+
+- **Main-project opt-in** previews a pinned runtime package reference, an
+  isolated adapter helper, descriptor, scene, and authoring roots. Connecting
+  the generated startup helper remains an explicit source review step.
+- **Dedicated editor head** creates a separate editor-only project that
+  references the selected production project without changing its composition
+  root or normal launch path.
+
+The preview lists every create/modify action and its text diff. Applying uses a
+logged transaction under `.skinny/onboarding/<transaction-id>` with original
+and output hashes, backups for modified files, safe descriptor validation, and
+a persistent `report.json`. The dialog can roll the transaction back. Rollback
+removes only generated files that still match their reviewed output and restores
+modified files only if they have not changed since onboarding; later edits are
+preserved and reported as conflicts.
+
+Restore, build, adapter handshake, Scene, and Play still happen only after the
+generated descriptor is opened and workspace trust is granted. The persistent
+report calls out that boundary and any remaining manual adapter work.
 
 ## Add the runtime SDK to a StereoKit project
 
