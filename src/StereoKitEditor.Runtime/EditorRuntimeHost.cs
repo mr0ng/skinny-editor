@@ -49,6 +49,9 @@ public static partial class EditorRuntimeHost
     private static long _lastTelemetryTimestamp;
     private static double _smoothedFrameTimeMilliseconds;
     private static bool _initialPlayCameraApplied;
+    private static int _fatalRuntimeFailureReported;
+    private static int _connectionClosedReported;
+    private static Task? _fatalRuntimeFailureSendTask;
 
     public static bool IsEditorLaunch(string[] args) =>
         !string.IsNullOrWhiteSpace(GetArgument(args, "--pipe"));
@@ -88,6 +91,10 @@ public static partial class EditorRuntimeHost
 
     private static async Task<int> RunAsync(string pipeName)
     {
+        Interlocked.Exchange(ref _stopRequested, 0);
+        Interlocked.Exchange(ref _fatalRuntimeFailureReported, 0);
+        Interlocked.Exchange(ref _connectionClosedReported, 0);
+        _fatalRuntimeFailureSendTask = null;
         using var shutdown = new CancellationTokenSource();
         await using var pipe = new NamedPipeClientStream(
             ".",
@@ -109,11 +116,24 @@ public static partial class EditorRuntimeHost
         _connection = connection;
         _sessionCancellation = shutdown.Token;
         var readTask = connection.ReadLoopAsync(HandleMessageAsync, shutdown.Token);
+        var runtimeLogs = new BoundedRuntimeLogBuffer();
+        var runtimeLogTask = ForwardRuntimeLogsAsync(runtimeLogs, shutdown.Token);
 
         Log.Subscribe((level, text) =>
         {
-            Console.WriteLine($"[StereoKit {level}] {text.TrimEnd()}");
-            _ = TrySendAsync(MessageTypes.RuntimeLog, new RuntimeLogMessage(level.ToString(), text.TrimEnd()));
+            var normalizedText = text.TrimEnd();
+            runtimeLogs.Enqueue(level.ToString(), normalizedText);
+            if (RuntimeFailureClassifier.TryClassifyFatalLog(
+                    level.ToString(),
+                    normalizedText,
+                    out var failure)
+                && Interlocked.CompareExchange(ref _fatalRuntimeFailureReported, 1, 0) == 0)
+            {
+                _fatalRuntimeFailureSendTask = TrySendAsync(
+                    MessageTypes.FatalError,
+                    new FatalErrorMessage(failure, normalizedText));
+                Interlocked.Exchange(ref _stopRequested, 1);
+            }
         });
 
         HelloMessage hello;
@@ -282,6 +302,10 @@ public static partial class EditorRuntimeHost
         try
         {
             SK.Run(Step, Shutdown);
+            if (_fatalRuntimeFailureSendTask is not null)
+            {
+                await _fatalRuntimeFailureSendTask;
+            }
         }
         catch (Exception exception)
         {
@@ -293,6 +317,15 @@ public static partial class EditorRuntimeHost
         finally
         {
             shutdown.Cancel();
+            try
+            {
+                await runtimeLogTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected during normal shutdown.
+            }
+
             try
             {
                 await readTask;
@@ -845,18 +878,43 @@ public static partial class EditorRuntimeHost
         return Task.CompletedTask;
     }
 
-    private static async Task TrySendAsync<T>(string type, T payload)
+    private static async Task TrySendAsync<T>(
+        string type,
+        T payload,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             if (_connection is not null)
             {
-                await _connection.SendAsync(type, payload);
+                await _connection.SendAsync(type, payload, cancellationToken);
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The owning session is shutting down.
         }
         catch (Exception exception) when (exception is IOException or ObjectDisposedException)
         {
-            Console.Error.WriteLine($"Editor connection closed: {exception.Message}");
+            if (Interlocked.CompareExchange(ref _connectionClosedReported, 1, 0) == 0)
+            {
+                Console.Error.WriteLine($"Editor connection closed: {exception.Message}");
+            }
+        }
+    }
+
+    private static async Task ForwardRuntimeLogsAsync(
+        BoundedRuntimeLogBuffer logs,
+        CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
+        while (await timer.WaitForNextTickAsync(cancellationToken))
+        {
+            foreach (var message in logs.Drain())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await TrySendAsync(MessageTypes.RuntimeLog, message, cancellationToken);
+            }
         }
     }
 
