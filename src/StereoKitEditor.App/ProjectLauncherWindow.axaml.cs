@@ -71,7 +71,7 @@ public partial class ProjectLauncherWindow : Window
         }
     }
 
-    private async void HandleBrowse(object? sender, RoutedEventArgs args)
+    private async void HandleBrowseDescriptor(object? sender, RoutedEventArgs args)
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
@@ -95,31 +95,11 @@ public partial class ProjectLauncherWindow : Window
 
     private async void HandleImport(object? sender, RoutedEventArgs args)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Select an existing StereoKit solution or project",
-            AllowMultiple = false,
-            FileTypeFilter =
-            [
-                new FilePickerFileType("StereoKit solution or project")
-                {
-                    Patterns = ["*.sln", "*.csproj"],
-                },
-            ],
-        });
-        var path = files.FirstOrDefault()?.TryGetLocalPath();
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return;
-        }
-
-        _viewModel.StartupError = "Inspecting safe project metadata; no project code is running…";
         try
         {
-            var analysis = await Task.Run(() => new ExistingStereoKitProjectAnalyzer().Analyze(path));
-            _viewModel.StartupError = string.Empty;
-            var result = await new ExistingProjectOnboardingWindow(analysis)
-                .ShowDialog<ExistingProjectOnboardingResult?>(this);
+            var result = await ExistingProjectImportFlow.RunAsync(
+                this,
+                message => _viewModel.StartupError = message);
             if (result is null)
             {
                 return;

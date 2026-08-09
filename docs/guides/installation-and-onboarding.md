@@ -32,7 +32,8 @@ The ZIP includes `examples\HelloEditor\HelloEditor.skproject.json`. It restores 
 
 ## Open a project
 
-Use **Open Project** or **Recent** in the title bar, or launch directly:
+Use **Open Project > Open SKinny Editor Project…** in the title bar, choose
+**Recent Projects…** from the same menu, or launch directly:
 
 ```powershell
 SKinny.Editor.exe --project .\Example\Example.skproject.json
@@ -52,11 +53,12 @@ The New Project action requires a packaged editor that contains the bundled `sdk
 
 ## Import an existing StereoKit project
 
-From the no-project launcher, choose **Import StereoKit Project…** and select a
-`.sln` or `.csproj`. The first pass is safe inspection only: it reads solution,
-project, package, target-framework, source-shape, and existing descriptor
-metadata without evaluating MSBuild targets, restoring packages, loading an
-assembly, or running the application.
+Choose **Open Project > Import Existing StereoKit Project…** from either the
+no-project launcher or an open editor window, then select a `.sln` or `.csproj`.
+The first pass is safe inspection only: it reads solution, project, package,
+target-framework, source-shape, and existing descriptor metadata without
+evaluating MSBuild targets, restoring packages, loading an assembly, or running
+the application.
 
 The compatibility report separates content that can become authorable from
 procedural draw calls, dynamic objects, services, and UI that remain opaque.

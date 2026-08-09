@@ -11,6 +11,8 @@ All notable public changes to SKinny Editor are recorded here.
 - Read-only analysis and compatibility reporting for existing StereoKit solutions and projects.
 - Previewed direct opt-in and dedicated editor-head scaffolding with transactional apply,
   persistent reports, backups, and hash-guarded rollback that preserves later user edits.
+- A shared **Open Project** menu for opening SKinny descriptors, importing existing
+  StereoKit projects, and accessing recent projects from the launcher or editor.
 
 ### Known limitations
 
