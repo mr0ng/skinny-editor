@@ -37,6 +37,7 @@ public static partial class EditorRuntimeHost
     private static Material? _floorMaterial;
     private static VisualResourceCache? _visualResources;
     private static SpatialUiRenderer? _spatialUi;
+    private static SelectionOutlineRenderer? _selectionOutline;
     private static Dictionary<Guid, RuntimeAssetDescriptor> _runtimeAssets = [];
     private static long _assetCatalogVersion;
     private static long _lastMigrationProposalRevision = -1;
@@ -200,6 +201,9 @@ public static partial class EditorRuntimeHost
         _floorMaterial = Material.Default.Copy();
         _floorMaterial[MatParamName.ColorTint] = new Color(0.15f, 0.17f, 0.20f, 1);
         _visualResources = new VisualResourceCache(ResolveRuntimeAsset);
+        _selectionOutline = _mode == RuntimeSessionMode.Scene
+            ? new SelectionOutlineRenderer()
+            : null;
         _sceneViewport = _mode == RuntimeSessionMode.Scene
             ? new SceneViewportController(
                 camera => _ = TrySendAsync(
@@ -498,16 +502,15 @@ public static partial class EditorRuntimeHost
 
         Hierarchy.Push(Matrix.TRS(position, ToQuat(transform.Rotation), ToVec3(transform.Scale)));
 
+        var selected = _mode == RuntimeSessionMode.Scene && selections.Contains(entity.Id);
         var renderer = entity.Components.PrimitiveMeshRenderer;
         if (renderer is { Visible: true })
         {
-            var color = selections.Contains(entity.Id)
-                ? new Color(1.0f, 0.64f, 0.12f, 1)
-                : new Color(
-                    (float)renderer.Color.R,
-                    (float)renderer.Color.G,
-                    (float)renderer.Color.B,
-                    (float)renderer.Color.A);
+            var color = new Color(
+                (float)renderer.Color.R,
+                (float)renderer.Color.G,
+                (float)renderer.Color.B,
+                (float)renderer.Color.A);
 
             var mesh = renderer.Primitive switch
             {
@@ -535,6 +538,16 @@ public static partial class EditorRuntimeHost
                 ? Matrix.TRS(Vec3.Zero, Quat.FromAngles(0, 180, 0), Vec3.One * 0.20f)
                 : Matrix.S(0.20f);
             mesh.Draw(material, meshTransform, color, RenderLayer.Layer0);
+            if (selected && renderer.Primitive == PrimitiveKind.Quad)
+            {
+                _selectionOutline?.DrawPlanarBounds(
+                    Matrix.TR(Vec3.Zero, Quat.FromAngles(0, 180, 0)),
+                    new Vec2(0.20f, 0.20f));
+            }
+            else if (selected)
+            {
+                _selectionOutline?.DrawSilhouette(mesh, meshTransform, Vec3.Zero, 0.20f);
+            }
 
             if (wantsPick)
             {
@@ -553,15 +566,15 @@ public static partial class EditorRuntimeHost
             }
         }
 
-        DrawModelRenderer(entity, selections.Contains(entity.Id), wantsPick, pickRay, ref pickedEntityId, ref nearestHitDistance);
-        DrawImageRenderer(entity, selections.Contains(entity.Id), wantsPick, pickRay, ref pickedEntityId, ref nearestHitDistance);
-        DrawTextRenderer(entity, selections.Contains(entity.Id), wantsPick, pickRay, ref pickedEntityId, ref nearestHitDistance);
+        DrawModelRenderer(entity, selected, wantsPick, pickRay, ref pickedEntityId, ref nearestHitDistance);
+        DrawImageRenderer(entity, selected, wantsPick, pickRay, ref pickedEntityId, ref nearestHitDistance);
+        DrawTextRenderer(entity, selected, wantsPick, pickRay, ref pickedEntityId, ref nearestHitDistance);
         var isSpatialUiPanel = entity.Components.UiPanel is { Visible: true };
         if (isSpatialUiPanel)
         {
             _spatialUi?.Draw(
                 entity,
-                selections,
+                _mode == RuntimeSessionMode.Scene ? selections : [],
                 _sceneViewport?.ToolSettings.UiInteractionMode ?? SceneUiInteractionMode.Edit,
                 wantsPick,
                 pickRay,
@@ -1207,8 +1220,13 @@ public static partial class EditorRuntimeHost
         }
 
         var localMatrix = ImageLocalMatrix(renderer, size);
-        var color = selected ? new Color(1, 0.68f, 0.22f, 1) : ToColor(renderer.Tint);
-        Mesh.Quad.Draw(material, localMatrix, color, RenderLayer.Layer0);
+        Mesh.Quad.Draw(material, localMatrix, ToColor(renderer.Tint), RenderLayer.Layer0);
+        if (selected)
+        {
+            _selectionOutline?.DrawPlanarBounds(
+                Matrix.TR(localMatrix.Translation, BillboardLocalRotation(renderer.Billboard)),
+                new Vec2((float)size.X, (float)size.Y));
+        }
         if (wantsPick)
         {
             TryPickLocalBox(
@@ -1256,27 +1274,31 @@ public static partial class EditorRuntimeHost
         var resolvedBounds = ResolveTextBounds(renderer, style);
         var bounds = new Vec2((float)resolvedBounds.X, (float)resolvedBounds.Y);
         var localMatrix = Matrix.TR(Vec3.Zero, BillboardLocalRotation(renderer.Billboard));
-        var tint = selected ? new Color(1, 0.68f, 0.22f, 1) : Color.White;
         Text.Add(
             renderer.Text ?? string.Empty,
             localMatrix,
             bounds,
             ToTextFit(renderer.Fit),
             style,
-            tint,
+            Color.White,
             ToPivot(renderer.Pivot),
             ToAlign(renderer.HorizontalAlignment, renderer.VerticalAlignment),
             0,
             0,
             0);
 
+        var boundsCenter = new Vec3(
+            (float)((0.5 - renderer.Pivot.X) * resolvedBounds.X),
+            (float)((renderer.Pivot.Y - 0.5) * resolvedBounds.Y),
+            0);
+        var boundsMatrix = Matrix.TRS(boundsCenter, BillboardLocalRotation(renderer.Billboard), Vec3.One);
+        if (selected)
+        {
+            _selectionOutline?.DrawPlanarBounds(boundsMatrix, bounds);
+        }
+
         if (wantsPick)
         {
-            var center = new Vec3(
-                (float)((0.5 - renderer.Pivot.X) * resolvedBounds.X),
-                (float)((renderer.Pivot.Y - 0.5) * resolvedBounds.Y),
-                0);
-            var boundsMatrix = Matrix.TRS(center, BillboardLocalRotation(renderer.Billboard), Vec3.One);
             TryPickLocalBox(
                 entity.Id,
                 boundsMatrix,
@@ -1473,10 +1495,34 @@ public static partial class EditorRuntimeHost
         }
 
         var localTransform = ModelLocalTransform(renderer, asset.Bounds);
-        var color = selected
-            ? new Color(1.0f, 0.72f, 0.24f, 1)
-            : Color.White;
-        DrawModelWithMaterials(cached.Model, renderer, asset, localTransform, color, entity);
+        DrawModelWithMaterials(cached.Model, renderer, asset, localTransform, Color.White, entity);
+        if (selected)
+        {
+            var sourceBounds = cached.Model.Bounds;
+            var sourceCenter = sourceBounds.center;
+            var renderedLargestDimension = MathF.Max(
+                sourceBounds.dimensions.x,
+                MathF.Max(sourceBounds.dimensions.y, sourceBounds.dimensions.z));
+            if (asset.Bounds is { } assetBounds)
+            {
+                sourceCenter = new Vec3(
+                    (float)assetBounds.CenterX,
+                    (float)assetBounds.CenterY,
+                    (float)assetBounds.CenterZ);
+                if (TryGetModelLocalBounds(renderer, assetBounds, out var renderedBounds))
+                {
+                    renderedLargestDimension = (float)Math.Max(
+                        renderedBounds.SizeX,
+                        Math.Max(renderedBounds.SizeY, renderedBounds.SizeZ));
+                }
+            }
+
+            _selectionOutline?.DrawSilhouette(
+                cached.Model,
+                localTransform,
+                sourceCenter,
+                renderedLargestDimension);
+        }
 
         if (wantsPick && TryGetModelLocalBounds(renderer, asset.Bounds, out var bounds))
         {
