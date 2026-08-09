@@ -36,8 +36,9 @@
     </Grid>
     <Border Grid.Row="3" Padding="14" Background="#20242A" BorderBrush="#363D45" BorderThickness="0,1,0,0">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button MinWidth="120" Classes="accent" Click="HandleNew" Content="New Project" />
         <Button MinWidth="120" Click="HandleBrowse" Content="Browse…" />
-        <Button MinWidth="120" Classes="accent" Click="HandleOpen" Content="Open Selected" />
+        <Button MinWidth="120" Click="HandleOpen" Content="Open Selected" />
       </StackPanel>
     </Border>
   </Grid>

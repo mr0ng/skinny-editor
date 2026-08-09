@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using StereoKitEditor.App.Infrastructure;
 using StereoKitEditor.App.Services;
+using StereoKitEditor.ProjectSystem;
 
 namespace StereoKitEditor.App;
 
@@ -40,6 +41,34 @@ public partial class ProjectLauncherWindow : Window
     {
         HandleOpen(sender, args);
         args.Handled = true;
+    }
+
+    private async void HandleNew(object? sender, RoutedEventArgs args)
+    {
+        var request = await new NewProjectDialog().ShowDialog<NewProjectRequest?>(this);
+        if (request is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var applicationDirectory = AppContext.BaseDirectory;
+            var generator = new NewProjectGenerator(
+                Path.Combine(applicationDirectory, "Templates", "StereoKitApp", "1"),
+                Path.Combine(applicationDirectory, "sdk"));
+            var result = generator.Create(request);
+            OpenProject(result.DescriptorPath);
+        }
+        catch (Exception exception) when (exception is ArgumentException
+                                           or DirectoryNotFoundException
+                                           or FileNotFoundException
+                                           or InvalidDataException
+                                           or IOException
+                                           or UnauthorizedAccessException)
+        {
+            _viewModel.StartupError = $"Could not create the project. {exception.Message}";
+        }
     }
 
     private async void HandleBrowse(object? sender, RoutedEventArgs args)

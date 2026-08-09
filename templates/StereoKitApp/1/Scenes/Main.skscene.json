@@ -1,0 +1,39 @@
+{
+  "formatVersion": 2,
+  "sceneId": "__SCENE_ID__",
+  "name": "Main",
+  "roots": [
+    {
+      "id": "__ROOT_ENTITY_ID__",
+      "name": "Welcome Cube",
+      "enabled": true,
+      "components": [
+        {
+          "id": "__TRANSFORM_COMPONENT_ID__",
+          "typeId": "stereokit.transform",
+          "schemaVersion": 1,
+          "enabled": true,
+          "data": {
+            "position": [0, 0, -0.65],
+            "rotation": [0, 0, 0, 1],
+            "scale": [1, 1, 1]
+          }
+        },
+        {
+          "id": "__MESH_COMPONENT_ID__",
+          "typeId": "stereokit.primitive-mesh-renderer",
+          "schemaVersion": 2,
+          "enabled": true,
+          "data": {
+            "primitive": "Cube",
+            "materialAssetId": null,
+            "baseColorTextureOverrideId": null,
+            "color": [0.18, 0.68, 0.92, 1],
+            "visible": true
+          }
+        }
+      ],
+      "children": []
+    }
+  ]
+}
