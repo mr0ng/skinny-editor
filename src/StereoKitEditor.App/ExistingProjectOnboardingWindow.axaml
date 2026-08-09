@@ -14,7 +14,7 @@
       </StackPanel>
     </Border>
 
-    <TabControl Grid.Row="1" Margin="16,12">
+    <TabControl x:Name="OnboardingTabs" Grid.Row="1" Margin="16,12">
       <TabItem Header="Compatibility report">
         <ScrollViewer>
           <StackPanel Margin="8,12" Spacing="14">
@@ -79,14 +79,12 @@
 
       <TabItem Header="Review changes">
         <Grid Margin="8,12" RowDefinitions="Auto,220,*" RowSpacing="10">
-          <Grid ColumnDefinitions="Auto,280,*,Auto" ColumnSpacing="9">
+          <Grid ColumnDefinitions="Auto,280,*" ColumnSpacing="9">
             <TextBlock VerticalAlignment="Center" Text="Integration shape" />
             <ComboBox x:Name="IntegrationChoiceBox" Grid.Column="1" MinWidth="260"
                       SelectionChanged="HandleIntegrationChanged" />
             <TextBlock x:Name="IntegrationDescriptionText" Grid.Column="2" VerticalAlignment="Center"
                        Classes="muted" TextWrapping="Wrap" />
-            <Button x:Name="PreviewButton" Grid.Column="3" MinWidth="120"
-                    Click="HandlePreview" Content="Preview changes" />
           </Grid>
 
           <ListBox x:Name="ChangesList" Grid.Row="1" SelectionChanged="HandleChangeSelected">
@@ -104,7 +102,7 @@
           <TextBox x:Name="DiffText" Grid.Row="2" FontFamily="Consolas" FontSize="11"
                    IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
                    ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
-                   Watermark="Select an integration shape and preview its changes." />
+                   Watermark="Select a change above to inspect its exact diff." />
         </Grid>
       </TabItem>
     </TabControl>
@@ -112,11 +110,11 @@
     <Border Grid.Row="2" Padding="16,12" Background="#20242A" BorderBrush="#363D45" BorderThickness="0,1,0,0">
       <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
         <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#F0B55A" TextWrapping="Wrap" />
-        <Button x:Name="RollbackButton" Grid.Column="1" MinWidth="120" Click="HandleRollback"
-                IsVisible="False" Content="Roll back" />
+        <Button x:Name="ReviewButton" Grid.Column="1" MinWidth="120" Click="HandleReview"
+                IsVisible="False" Content="Review changes" />
         <Button x:Name="CancelButton" Grid.Column="2" MinWidth="100" Click="HandleCancel" Content="Cancel" />
         <Button x:Name="ApplyButton" Grid.Column="3" MinWidth="150" Classes="accent"
-                Click="HandleApply" IsEnabled="False" Content="Apply reviewed changes" />
+                Click="HandleApply" IsEnabled="False" Content="Import &amp; Open" />
       </Grid>
     </Border>
   </Grid>

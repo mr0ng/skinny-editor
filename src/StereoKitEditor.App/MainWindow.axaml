@@ -25,12 +25,19 @@
 
   <Grid x:Name="RootGrid" RowDefinitions="32,50,*,4,180,25">
     <Border Grid.Row="0" Background="#202328" BorderBrush="#34383E" BorderThickness="0,0,0,1" ClipToBounds="True">
-      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" ClipToBounds="True">
-        <Button Grid.Column="0" Content="Open Project" Background="Transparent" Padding="12,0" Click="OpenProject_Click" />
-        <Button Grid.Column="1" Content="Recent" Background="Transparent" Padding="12,0" Click="RecentProjects_Click" />
-        <TextBlock Grid.Column="2" Margin="10,0" VerticalAlignment="Center" Classes="muted" FontSize="11"
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ClipToBounds="True">
+        <DropDownButton Grid.Column="0" Content="Open Project" Background="Transparent" Padding="12,0">
+          <DropDownButton.Flyout>
+            <MenuFlyout>
+              <MenuItem Header="Open SKinny Editor Project…" Click="OpenProject_Click" />
+              <MenuItem Header="Import Existing StereoKit Project…" Click="ImportProject_Click" />
+              <MenuItem Header="Recent Projects…" Click="RecentProjects_Click" />
+            </MenuFlyout>
+          </DropDownButton.Flyout>
+        </DropDownButton>
+        <TextBlock Grid.Column="1" Margin="10,0" VerticalAlignment="Center" Classes="muted" FontSize="11"
                    Text="{Binding ProjectName}" />
-        <ScrollViewer Grid.Column="3" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+        <ScrollViewer Grid.Column="2" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
                       ClipToBounds="True">
           <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
             <Border Margin="2,3" Padding="8,0"
@@ -63,14 +70,14 @@
             </Border>
           </StackPanel>
         </ScrollViewer>
-        <ComboBox Grid.Column="4" Width="140" Margin="3" ItemsSource="{Binding DeploymentProfiles}"
+        <ComboBox Grid.Column="3" Width="140" Margin="3" ItemsSource="{Binding DeploymentProfiles}"
                   SelectedItem="{Binding SelectedDeploymentProfile, Mode=TwoWay}"
                   IsVisible="{Binding HasDeploymentProfiles}" ToolTip.Tip="Device deployment profile">
           <ComboBox.ItemTemplate>
             <DataTemplate><TextBlock Text="{Binding DisplayName}" /></DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
-        <Button Grid.Column="5" Margin="2" Padding="10,0" Command="{Binding DeployCommand}"
+        <Button Grid.Column="4" Margin="2" Padding="10,0" Command="{Binding DeployCommand}"
                 IsVisible="{Binding HasDeploymentProfiles}" Content="Deploy" />
       </Grid>
     </Border>

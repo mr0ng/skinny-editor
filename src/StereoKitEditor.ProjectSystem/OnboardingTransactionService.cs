@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace StereoKitEditor.ProjectSystem;
 
@@ -321,8 +323,7 @@ public sealed class OnboardingTransactionService
         foreach (var change in proposal.Changes)
         {
             var target = ResolveTarget(root, change.RelativePath);
-            var proposedHash = OnboardingProposalBuilder.Hash(
-                OnboardingProposalBuilder.EncodeUtf8(change.ProposedText, change.WriteUtf8Bom));
+            var proposedHash = OnboardingProposalBuilder.Hash(change.ProposedBytes);
             if (!string.Equals(proposedHash, change.ProposedSha256, StringComparison.Ordinal))
             {
                 throw new OnboardingPreflightException(
@@ -403,27 +404,59 @@ public sealed class OnboardingTransactionService
             checks.Add(new("Descriptor schema", false, exception.Message));
         }
 
-        var changedMsBuildFiles = proposal.Changes
-            .Where(change => Path.GetExtension(change.RelativePath) is ".csproj" or ".props" or ".targets")
+        var changedXmlFiles = proposal.Changes
+            .Where(change => IsSafelyValidatedXmlPath(change.RelativePath))
             .Select(change => ResolveTarget(proposal.ProjectRoot, change.RelativePath))
             .ToArray();
         try
         {
-            foreach (var path in changedMsBuildFiles)
+            foreach (var path in changedXmlFiles)
             {
                 ValidateSafeXml(path);
             }
 
             checks.Add(new(
-                "MSBuild XML shape",
+                "Configuration XML shape",
                 true,
-                changedMsBuildFiles.Length == 0
-                    ? "No MSBuild files were changed."
-                    : "Changed MSBuild files are well-formed XML; targets were not evaluated."));
+                changedXmlFiles.Length == 0
+                    ? "No XML configuration files were changed."
+                    : "Changed MSBuild and NuGet configuration files are well-formed XML; targets were not evaluated."));
         }
         catch (Exception exception) when (exception is IOException or XmlException)
         {
-            checks.Add(new("MSBuild XML shape", false, exception.Message));
+            checks.Add(new("Configuration XML shape", false, exception.Message));
+        }
+
+        var changedCSharpFiles = proposal.Changes
+            .Where(change => !change.IsBinary
+                             && string.Equals(
+                                 Path.GetExtension(change.RelativePath),
+                                 ".cs",
+                                 StringComparison.OrdinalIgnoreCase))
+            .Select(change => ResolveTarget(proposal.ProjectRoot, change.RelativePath))
+            .ToArray();
+        try
+        {
+            var syntaxErrors = changedCSharpFiles.SelectMany(path =>
+                    CSharpSyntaxTree.ParseText(
+                            File.ReadAllText(path),
+                            new CSharpParseOptions(LanguageVersion.Preview),
+                            path)
+                        .GetDiagnostics()
+                        .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error))
+                .ToArray();
+            checks.Add(new(
+                "C# syntax",
+                syntaxErrors.Length == 0,
+                syntaxErrors.Length == 0
+                    ? changedCSharpFiles.Length == 0
+                        ? "No C# source files were changed."
+                        : "Changed C# source files parse without syntax errors."
+                    : string.Join(Environment.NewLine, syntaxErrors.Select(diagnostic => diagnostic.ToString()))));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            checks.Add(new("C# syntax", false, exception.Message));
         }
 
         var hashesMatch = proposal.Changes.All(change =>
@@ -453,6 +486,15 @@ public sealed class OnboardingTransactionService
         using var stream = File.OpenRead(path);
         using var reader = XmlReader.Create(stream, settings);
         _ = XDocument.Load(reader, LoadOptions.None);
+    }
+
+    private static bool IsSafelyValidatedXmlPath(string path)
+    {
+        var extension = Path.GetExtension(path);
+        return extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase)
+               || extension.Equals(".props", StringComparison.OrdinalIgnoreCase)
+               || extension.Equals(".targets", StringComparison.OrdinalIgnoreCase)
+               || Path.GetFileName(path).Equals("NuGet.config", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string ResolveTarget(string projectRoot, string relativePath)
@@ -508,9 +550,9 @@ public sealed class OnboardingTransactionService
         {
             await File.WriteAllBytesAsync(
                 temporary,
-                OnboardingProposalBuilder.EncodeUtf8(change.ProposedText, change.WriteUtf8Bom),
+                change.ProposedBytes,
                 cancellationToken);
-            File.Move(
+            MoveFileWithRetry(
                 temporary,
                 target,
                 overwrite: change.Kind == OnboardingChangeKind.Modify);
@@ -532,7 +574,7 @@ public sealed class OnboardingTransactionService
         try
         {
             File.Copy(backup, temporary, overwrite: false);
-            File.Move(temporary, target, overwrite: true);
+            MoveFileWithRetry(temporary, target, overwrite: true);
         }
         finally
         {
@@ -556,7 +598,7 @@ public sealed class OnboardingTransactionService
                 temporary,
                 JsonSerializer.Serialize(manifest, JsonOptions) + Environment.NewLine,
                 cancellationToken);
-            File.Move(temporary, path, overwrite: true);
+            MoveFileWithRetry(temporary, path, overwrite: true);
         }
         finally
         {
@@ -610,7 +652,7 @@ public sealed class OnboardingTransactionService
                 temporary,
                 JsonSerializer.Serialize(value, JsonOptions) + Environment.NewLine,
                 cancellationToken);
-            File.Move(temporary, path, overwrite: true);
+            MoveFileWithRetry(temporary, path, overwrite: true);
         }
         finally
         {
@@ -625,6 +667,25 @@ public sealed class OnboardingTransactionService
     {
         using var stream = File.OpenRead(path);
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream));
+    }
+
+    private static void MoveFileWithRetry(string source, string destination, bool overwrite)
+    {
+        const int maximumAttempts = 5;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(source, destination, overwrite);
+                return;
+            }
+            catch (Exception exception) when (attempt < maximumAttempts
+                                               && exception is IOException or UnauthorizedAccessException
+                                               && File.Exists(source))
+            {
+                Thread.Sleep(TimeSpan.FromMilliseconds(50 * attempt));
+            }
+        }
     }
 
     private static void DeleteEmptyParents(string directory, string projectRoot)

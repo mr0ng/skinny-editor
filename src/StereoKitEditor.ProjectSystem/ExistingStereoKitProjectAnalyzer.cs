@@ -12,7 +12,7 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
 {
     private const int MaximumProjects = 512;
     private const int MaximumSourceFilesPerProject = 4096;
-    private static readonly string[] ExcludedDirectoryNames = [".git", "bin", "obj", "packages"];
+    private static readonly string[] ExcludedDirectoryNames = [".git", ".skinny", "bin", "obj", "packages"];
 
     public ExistingProjectAnalysis Analyze(string selectedPath)
     {
@@ -51,6 +51,7 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
             .ToArray();
         var validDescriptors = new List<string>();
+        var validDescriptorRuntimeProjects = new List<ValidDescriptorRuntime>();
         foreach (var descriptorPath in descriptorPaths)
         {
             try
@@ -58,6 +59,10 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
                 var definition = EditorProjectDefinition.Load(descriptorPath);
                 ValidateExistingDescriptorFiles(definition);
                 validDescriptors.Add(descriptorPath);
+                validDescriptorRuntimeProjects.Add(new(
+                    descriptorPath,
+                    definition.CreateRuntimeProjectSpec(RuntimeProfileMode.Scene).ProjectPath,
+                    HasGeneratedDirectAdapter(descriptorPath)));
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
                                                or System.Text.Json.JsonException or InvalidDataException)
@@ -73,7 +78,11 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
             projectRoot,
             ["Directory.Build.props", "Directory.Build.targets"]);
 
-        var classification = Classify(projects, descriptorPaths, validDescriptors);
+        var classification = Classify(
+            projects,
+            descriptorPaths,
+            validDescriptors,
+            validDescriptorRuntimeProjects);
         return new ExistingProjectAnalysis(
             canonicalSelection,
             projectRoot,
@@ -251,7 +260,7 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .Select(value => Path.GetFullPath(Path.Combine(projectDirectory, value!)))
             .ToArray();
-        var sourceShape = InspectSourceShape(projectDirectory, warnings);
+        var sourceShape = InspectSourceShape(projectPath, projectDirectory, warnings);
         var centralManagement = string.Equals(
             properties.GetValueOrDefault("ManagePackageVersionsCentrally"),
             "true",
@@ -269,15 +278,21 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
             projectReferences,
             centralManagement,
             sourceShape.HasStereoKitInitialization,
-            sourceShape.HasEditorLaunchHook);
+            sourceShape.HasEditorLaunchHook,
+            sourceShape.CanAddEditorLaunchHook,
+            sourceShape.EditorLaunchHookAssessment);
     }
 
-    private static (bool HasStereoKitInitialization, bool HasEditorLaunchHook) InspectSourceShape(
+    private static (
+        bool HasStereoKitInitialization,
+        bool HasEditorLaunchHook,
+        bool CanAddEditorLaunchHook,
+        string EditorLaunchHookAssessment) InspectSourceShape(
+        string projectPath,
         string directory,
         ICollection<string> warnings)
     {
         var hasInitialization = false;
-        var hasHook = false;
         var count = 0;
         foreach (var sourcePath in EnumerateFiles(directory, "*.cs"))
         {
@@ -301,24 +316,62 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
 
             hasInitialization |= source.Contains("SK.Initialize", StringComparison.Ordinal)
                                  || source.Contains("StereoKit.SK.Initialize", StringComparison.Ordinal);
-            hasHook |= source.Contains("EditorRuntimeHost.IsEditorLaunch", StringComparison.Ordinal)
-                       && source.Contains("EditorRuntimeHost.Run", StringComparison.Ordinal);
-            if (hasInitialization && hasHook)
+            if (hasInitialization)
             {
                 break;
             }
         }
 
-        return (hasInitialization, hasHook);
+        try
+        {
+            var hook = CSharpEntryPointHookPlanner.Analyze(projectPath);
+            return (
+                hasInitialization,
+                hook.Status == EditorLaunchHookPlanStatus.AlreadyPresent,
+                hook.Status == EditorLaunchHookPlanStatus.Ready,
+                hook.Message);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            warnings.Add($"Could not safely inspect the C# entry point in '{projectPath}': {exception.Message}");
+            return (
+                hasInitialization,
+                false,
+                false,
+                "The C# entry point could not be inspected safely.");
+        }
     }
 
     private static Classification Classify(
         IReadOnlyList<InspectedDotnetProject> projects,
         IReadOnlyList<string> descriptors,
-        IReadOnlyList<string> validDescriptors)
+        IReadOnlyList<string> validDescriptors,
+        IReadOnlyList<ValidDescriptorRuntime> validDescriptorRuntimeProjects)
     {
         if (validDescriptors.Count > 0)
         {
+            var incomplete = projects.FirstOrDefault(project =>
+                validDescriptorRuntimeProjects.Any(runtime =>
+                    runtime.HasGeneratedDirectAdapter
+                    && string.Equals(runtime.ProjectPath, project.Path, StringComparison.OrdinalIgnoreCase))
+                && project.ReferencesEditorRuntime
+                && !project.HasEditorLaunchHook);
+            if (incomplete is not null)
+            {
+                var integration = incomplete.CanAddEditorLaunchHook
+                    ? OnboardingIntegrationShape.DirectOptIn
+                    : OnboardingIntegrationShape.DedicatedEditorHead;
+                return new(
+                    ExistingProjectCompatibility.IncompleteOnboarding,
+                    integration,
+                    "This workspace contains a valid descriptor from an incomplete onboarding transaction.",
+                    [
+                        incomplete.CanAddEditorLaunchHook
+                            ? "SKinny can finish the entry-point integration automatically and preserve the existing descriptor."
+                            : "The production entry point is ambiguous, so SKinny will finish setup with an isolated editor head.",
+                    ]);
+            }
+
             return new(
                 ExistingProjectCompatibility.ReadyToOpen,
                 null,
@@ -356,9 +409,9 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
         {
             return new(
                 ExistingProjectCompatibility.ManualIntegrationRequired,
-                OnboardingIntegrationShape.DedicatedEditorHead,
+                null,
                 "StereoKit is present, but no conventional desktop startup project was identified.",
-                ["A user must select the production code and assets that a dedicated editor head may reference."]);
+            ["A user must select the production code and assets that a dedicated editor head may reference."]);
         }
 
         if (desktopExecutables.Length == 1 && stereoKitProjects.Length == 1)
@@ -366,6 +419,18 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
             var startup = desktopExecutables[0];
             if (!startup.TargetFrameworks.Any(IsEditorRuntimeCompatibleFramework))
             {
+                if (!startup.TargetFrameworks.Any(CanReferenceFromDedicatedHeadFramework))
+                {
+                    return new(
+                        ExistingProjectCompatibility.ManualIntegrationRequired,
+                        null,
+                        "This project's target framework cannot be referenced safely by a desktop editor head.",
+                        [
+                            $"'{startup.Name}' targets {string.Join(", ", startup.TargetFrameworks)}.",
+                            "Import requires an editor-compatible desktop bridge project selected by the user.",
+                        ]);
+                }
+
                 return new(
                     ExistingProjectCompatibility.DedicatedEditorHeadRecommended,
                     OnboardingIntegrationShape.DedicatedEditorHead,
@@ -381,9 +446,18 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
                 $"'{startup.Name}' is a single desktop executable with a StereoKit package reference.",
                 "Safe inspection did not evaluate MSBuild targets or execute project code.",
             };
-            if (!startup.HasStereoKitInitialization)
+            if (!startup.HasEditorLaunchHook && !startup.CanAddEditorLaunchHook)
             {
-                reasons.Add("StereoKit initialization was not recognized in source, so the startup hook must be reviewed manually.");
+                return new(
+                    ExistingProjectCompatibility.DedicatedEditorHeadRecommended,
+                    OnboardingIntegrationShape.DedicatedEditorHead,
+                    "A separate editor head avoids an ambiguous production entry-point rewrite.",
+                    [.. reasons, startup.EditorLaunchHookAssessment]);
+            }
+
+            if (!startup.HasEditorLaunchHook)
+            {
+                reasons.Add(startup.EditorLaunchHookAssessment);
             }
 
             return new(
@@ -415,6 +489,28 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
         return ["New scene entities and built-in SKinny components after opt-in.", "Assets under the selected authoring root can be indexed without executing project code."];
     }
 
+    private static bool HasGeneratedDirectAdapter(string descriptorPath)
+    {
+        var adapterPath = Path.Combine(Path.GetDirectoryName(descriptorPath)!, "EditorAdapter.cs");
+        if (!File.Exists(adapterPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            var source = File.ReadAllText(adapterPath);
+            return source.Contains("namespace SKinnyOnboarding", StringComparison.Ordinal)
+                   && source.Contains("class EditorEntryPoint", StringComparison.Ordinal)
+                   && source.Contains("class GeneratedProjectAdapter", StringComparison.Ordinal)
+                   && source.Contains("EditorRuntimeHost.IsEditorLaunch", StringComparison.Ordinal);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
     private static IReadOnlyList<string> CreateOpaqueContent(IReadOnlyList<InspectedDotnetProject> projects)
     {
         var content = new List<string>
@@ -424,7 +520,7 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
         };
         if (projects.Any(project => !project.HasStereoKitInitialization))
         {
-            content.Add("Unrecognized startup composition must be connected manually or isolated in a dedicated head.");
+            content.Add("Unrecognized startup composition remains application-owned and is isolated behind the generated editor entry point.");
         }
 
         return content;
@@ -505,11 +601,36 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
         framework.StartsWith("net", StringComparison.OrdinalIgnoreCase)
         && !framework.Contains("android", StringComparison.OrdinalIgnoreCase)
         && !framework.Contains("ios", StringComparison.OrdinalIgnoreCase)
+        && !framework.Contains("maccatalyst", StringComparison.OrdinalIgnoreCase)
+        && !framework.Contains("tvos", StringComparison.OrdinalIgnoreCase)
         && !framework.Contains("browser", StringComparison.OrdinalIgnoreCase)
         && !framework.StartsWith("netstandard", StringComparison.OrdinalIgnoreCase);
 
-    internal static bool IsEditorRuntimeCompatibleFramework(string framework)
+    public static bool IsEditorRuntimeCompatibleFramework(string framework)
     {
+        if (!IsDesktopTargetFramework(framework)
+            || !TryReadNetMajorVersion(framework, out var major))
+        {
+            return false;
+        }
+
+        return major >= 8;
+    }
+
+    public static bool CanReferenceFromDedicatedHeadFramework(string framework)
+    {
+        if (!IsDesktopTargetFramework(framework))
+        {
+            return false;
+        }
+
+        return framework.StartsWith("netcoreapp", StringComparison.OrdinalIgnoreCase)
+               || TryReadNetMajorVersion(framework, out var major) && major >= 5;
+    }
+
+    private static bool TryReadNetMajorVersion(string framework, out int major)
+    {
+        major = 0;
         if (!framework.StartsWith("net", StringComparison.OrdinalIgnoreCase))
         {
             return false;
@@ -517,12 +638,7 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
 
         var version = framework.AsSpan(3);
         var separator = version.IndexOfAny('.', '-');
-        if (separator <= 0 || !int.TryParse(version[..separator], out var major))
-        {
-            return false;
-        }
-
-        return major >= 8;
+        return separator > 0 && int.TryParse(version[..separator], out major);
     }
 
     private static bool IsExecutable(string outputType) =>
@@ -624,6 +740,11 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
         OnboardingIntegrationShape? Integration,
         string Summary,
         IReadOnlyList<string> Reasons);
+
+    private sealed record ValidDescriptorRuntime(
+        string DescriptorPath,
+        string ProjectPath,
+        bool HasGeneratedDirectAdapter);
 
     [GeneratedRegex("^Project\\(.*\\)\\s*=\\s*.*?,\\s*\"([^\"]+\\.csproj)\"", RegexOptions.IgnoreCase)]
     private static partial Regex SolutionProjectPattern();

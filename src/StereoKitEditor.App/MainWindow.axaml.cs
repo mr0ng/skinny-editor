@@ -191,6 +191,31 @@ public partial class MainWindow : Window
         QueueProjectSwitch(files.FirstOrDefault()?.TryGetLocalPath());
     }
 
+    private async void ImportProject_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs args)
+    {
+        try
+        {
+            var result = await ExistingProjectImportFlow.RunAsync(this, _viewModel.ReportStatus);
+            if (result is null)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(result.DescriptorPath))
+            {
+                QueueProjectSwitch(result.DescriptorPath);
+                return;
+            }
+
+            _viewModel.ReportStatus(result.Message);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+                                           or InvalidDataException or System.Text.Json.JsonException)
+        {
+            _viewModel.ReportStatus($"Could not import the StereoKit project. {exception.Message}");
+        }
+    }
+
     private async void RecentProjects_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs args)
     {
         var entries = _recentProjects.Load();

@@ -10,14 +10,6 @@ public sealed record NewProjectResult(string ProjectDirectory, string Descriptor
 
 public sealed partial class NewProjectGenerator
 {
-    private static readonly string[] RequiredSdkPackages =
-    [
-        "SKinny.Editor.Adapter",
-        "SKinny.Editor.Scene",
-        "SKinny.Editor.Protocol",
-        "SKinny.Editor.Runtime",
-    ];
-
     private static readonly HashSet<string> CSharpKeywords = new(StringComparer.Ordinal)
     {
         "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked",
@@ -83,7 +75,7 @@ public sealed partial class NewProjectGenerator
             CopySdkPackages(stagingDirectory, sdkPackages);
             EnsureNoTemplateTokensRemain(stagingDirectory);
 
-            Directory.Move(stagingDirectory, projectDirectory);
+            MoveDirectoryWithRetry(stagingDirectory, projectDirectory);
             return new NewProjectResult(
                 projectDirectory,
                 Path.Combine(projectDirectory, $"{projectName}.skproject.json"));
@@ -96,6 +88,27 @@ public sealed partial class NewProjectGenerator
             }
 
             throw;
+        }
+    }
+
+    private static void MoveDirectoryWithRetry(string source, string destination)
+    {
+        const int maximumAttempts = 5;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                Directory.Move(source, destination);
+                return;
+            }
+            catch (Exception exception) when (attempt < maximumAttempts
+                                               && exception is IOException or UnauthorizedAccessException
+                                               && Directory.Exists(source)
+                                               && !Directory.Exists(destination)
+                                               && !File.Exists(destination))
+            {
+                Thread.Sleep(TimeSpan.FromMilliseconds(50 * attempt));
+            }
         }
     }
 
@@ -154,30 +167,10 @@ public sealed partial class NewProjectGenerator
 
     private IReadOnlyList<string> FindSdkPackages()
     {
-        if (!Directory.Exists(_sdkPackageDirectory))
-        {
-            throw new DirectoryNotFoundException(
-                "The bundled SKinny SDK feed is unavailable. Use a packaged SKinny Editor build or create one with scripts/package-windows.ps1.");
-        }
-
-        var packages = Directory.EnumerateFiles(_sdkPackageDirectory, "*.nupkg", SearchOption.TopDirectoryOnly)
-            .Where(path => !path.EndsWith(".snupkg", StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-        foreach (var packageId in RequiredSdkPackages)
-        {
-            var expectedFileName = $"{packageId}.{_sdkVersion}.nupkg";
-            if (!packages.Any(path => string.Equals(
-                    Path.GetFileName(path),
-                    expectedFileName,
-                    StringComparison.OrdinalIgnoreCase)))
-            {
-                throw new FileNotFoundException(
-                    $"The bundled SDK feed is missing {expectedFileName}.",
-                    Path.Combine(_sdkPackageDirectory, expectedFileName));
-            }
-        }
-
-        return packages;
+        return BundledSdkPackages.FindRequired(
+            _sdkVersion,
+            _sdkPackageDirectory,
+            allowGlobalPackageCache: false);
     }
 
     private IReadOnlyDictionary<string, string> CreateTokens(string projectName) =>

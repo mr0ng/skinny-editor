@@ -281,6 +281,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public string SceneHostStatus { get => _sceneHostStatus; private set => SetProperty(ref _sceneHostStatus, value); }
     public string PlayHostStatus { get => _playHostStatus; private set => SetProperty(ref _playHostStatus, value); }
     public string StatusMessage { get => _statusMessage; private set => SetProperty(ref _statusMessage, value); }
+
+    internal void ReportStatus(string message) => StatusMessage = message;
     public bool HasSelection => SelectedEntity is not null;
     public IReadOnlyList<Guid> SelectedEntityIds => _selectedEntityIds.Count > 0
         ? _selectedEntityIds.ToArray()

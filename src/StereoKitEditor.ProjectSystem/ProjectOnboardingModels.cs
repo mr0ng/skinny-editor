@@ -6,6 +6,7 @@ namespace StereoKitEditor.ProjectSystem;
 public enum ExistingProjectCompatibility
 {
     ReadyToOpen,
+    IncompleteOnboarding,
     DirectOptInSupported,
     DedicatedEditorHeadRecommended,
     ManualIntegrationRequired,
@@ -39,9 +40,55 @@ public sealed record ExistingProjectAnalysis(
 {
     public bool IsReadOnly => true;
 
-    public InspectedDotnetProject? RecommendedStartupProject => Projects.FirstOrDefault(project =>
-        project.ReferencesStereoKit
-        && project.OutputType is "Exe" or "WinExe");
+    public InspectedDotnetProject? RecommendedStartupProject
+    {
+        get
+        {
+            var selected = Projects.FirstOrDefault(project =>
+                project.ReferencesStereoKit
+                && string.Equals(project.Path, SelectedPath, StringComparison.OrdinalIgnoreCase));
+            if (selected is not null)
+            {
+                return selected;
+            }
+
+            var descriptorRuntimePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var descriptorPath in ValidDescriptorPaths)
+            {
+                try
+                {
+                    var definition = EditorProjectDefinition.Load(descriptorPath);
+                    descriptorRuntimePaths.Add(
+                        definition.CreateRuntimeProjectSpec(RuntimeProfileMode.Scene).ProjectPath);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+                                                   or System.Text.Json.JsonException or InvalidDataException)
+                {
+                    // The analyzer already reports invalid descriptors. Do not let a later file change
+                    // turn startup selection into an unsafe arbitrary fallback.
+                }
+            }
+
+            var descriptorProjects = Projects.Where(project => descriptorRuntimePaths.Contains(project.Path))
+                .ToArray();
+            if (descriptorProjects.Length == 1)
+            {
+                return descriptorProjects[0];
+            }
+
+            var executables = Projects.Where(project =>
+                    project.ReferencesStereoKit
+                    && (project.OutputType is "Exe" or "WinExe"))
+                .ToArray();
+            if (executables.Length == 1)
+            {
+                return executables[0];
+            }
+
+            var candidates = Projects.Where(project => project.ReferencesStereoKit).ToArray();
+            return candidates.Length == 1 ? candidates[0] : null;
+        }
+    }
 }
 
 public sealed record InspectedDotnetProject(
@@ -55,7 +102,9 @@ public sealed record InspectedDotnetProject(
     IReadOnlyList<string> ProjectReferences,
     bool UsesCentralPackageManagement,
     bool HasStereoKitInitialization,
-    bool HasEditorLaunchHook)
+    bool HasEditorLaunchHook,
+    bool CanAddEditorLaunchHook,
+    string EditorLaunchHookAssessment)
 {
     public bool ReferencesStereoKit => PackageReferences.Keys.Any(package =>
         string.Equals(package, "StereoKit", StringComparison.OrdinalIgnoreCase));
@@ -81,9 +130,13 @@ public sealed record OnboardingProposedChange(
     string? OriginalSha256,
     string ProposedSha256,
     string? OriginalText,
-    string ProposedText,
+    string? ProposedText,
+    byte[] ProposedBytes,
     string Diff,
-    bool WriteUtf8Bom);
+    bool WriteUtf8Bom)
+{
+    public bool IsBinary => ProposedText is null;
+}
 
 public sealed record OnboardingProposal(
     Guid ProposalId,
