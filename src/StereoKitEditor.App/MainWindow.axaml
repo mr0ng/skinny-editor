@@ -59,9 +59,6 @@
               <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <TextBlock VerticalAlignment="Center" Foreground="#F09AA5" FontSize="11"
                            Text="{Binding UnresponsiveRuntimeSummary}" />
-                <Button Padding="8,1" Command="{Binding WaitForRuntimeCommand}" Content="Wait" />
-                <Button Padding="8,1" Command="{Binding RestartUnresponsiveRuntimeCommand}" Content="Restart" />
-                <Button Padding="8,1" Background="Transparent" Command="{Binding StopUnresponsiveRuntimeCommand}" Content="Stop" />
               </StackPanel>
             </Border>
           </StackPanel>

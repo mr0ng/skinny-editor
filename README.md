@@ -90,7 +90,7 @@ SKinny Editor brings the parts of a StereoKit project that benefit from direct m
 
 - Separate embedded Scene and Game hosts connected through a versioned duplex protocol.
 - Deep-cloned Play state, immutable build generations, stale-session reporting, pause/step/stop controls, and read-only runtime telemetry.
-- Heartbeats, unresponsive-process recovery, bounded Scene restart, structured diagnostics, redacted crash bundles, and Windows Job Object cleanup.
+- Heartbeats, bounded runtime-log transport, automatic failed-host containment, one-attempt Scene recovery, structured diagnostics, redacted crash bundles, and Windows Job Object cleanup.
 - Verified self-contained `win-x64` portable packaging and paired preview SDK packages.
 
 ## How a project connects

@@ -31,6 +31,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     private readonly SceneTemplateLibrary _templateLibrary;
     private readonly RuntimeSession _sceneHost = new(RuntimeSessionMode.Scene);
     private readonly RuntimeSession _playHost = new(RuntimeSessionMode.Play);
+    private readonly BoundedRuntimeLogBuffer _runtimeLogs = new();
+    private readonly HashSet<RuntimeSession> _runtimeFailuresWithDiagnostics = [];
     private readonly DebouncedFileWatcher _sourceWatcher;
     private readonly DebouncedFileWatcher _assetWatcher;
     private HierarchyItemViewModel? _selectedItem;
@@ -52,6 +54,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     private string? _playGenerationDirectory;
     private bool _isPlayStale;
     private bool _sceneRecoveryInProgress;
+    private bool _sceneFailureContainmentInProgress;
+    private bool _playFailureContainmentInProgress;
     private SceneCameraState _sceneCamera = SceneCameraState.Default;
     private SceneToolSettings _sceneToolSettings = SceneToolSettings.Default;
     private bool _initialized;
@@ -192,13 +196,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             () => RunSafelyAsync(RunUntestedStereoKitAsync),
             () => HasCompatibilityBlock);
         DismissCompatibilityBlockCommand = new RelayCommand(ClearCompatibilityBlock);
-        WaitForRuntimeCommand = new RelayCommand(WaitForRuntime, () => HasUnresponsiveRuntime);
-        RestartUnresponsiveRuntimeCommand = new AsyncRelayCommand(
-            () => RunSafelyAsync(RestartUnresponsiveRuntimeAsync),
-            () => HasUnresponsiveRuntime);
-        StopUnresponsiveRuntimeCommand = new AsyncRelayCommand(
-            () => RunSafelyAsync(StopUnresponsiveRuntimeAsync),
-            () => HasUnresponsiveRuntime);
         CreateChildCommand = new RelayCommand(CreateChildEntity);
         DuplicateEntitiesCommand = new RelayCommand(DuplicateSelectedEntities, () => SelectedEntityIds.Count > 0);
         DeleteEntitiesCommand = new RelayCommand(DeleteSelectedEntities, () => SelectedEntityIds.Count > 0);
@@ -263,9 +260,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public RelayCommand DismissMigrationProposalCommand { get; }
     public AsyncRelayCommand RunUntestedStereoKitCommand { get; }
     public RelayCommand DismissCompatibilityBlockCommand { get; }
-    public RelayCommand WaitForRuntimeCommand { get; }
-    public AsyncRelayCommand RestartUnresponsiveRuntimeCommand { get; }
-    public AsyncRelayCommand StopUnresponsiveRuntimeCommand { get; }
     public RelayCommand CreateChildCommand { get; }
     public RelayCommand DuplicateEntitiesCommand { get; }
     public RelayCommand DeleteEntitiesCommand { get; }
@@ -391,7 +385,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         : string.Empty;
     public bool HasUnresponsiveRuntime => _unresponsiveRuntime is not null;
     public string UnresponsiveRuntimeSummary => _unresponsiveRuntime is { } runtime
-        ? $"{(runtime.Mode == RuntimeSessionMode.Scene ? "Scene" : "Game")} is not responding"
+        ? runtime.Mode == RuntimeSessionMode.Scene
+            ? "Scene stopped responding · restarting automatically"
+            : "Game stopped responding · stopping automatically"
         : string.Empty;
     public bool AutoRebuildEnabled
     {
@@ -1499,7 +1495,32 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     private void HandleRuntimeEvent(object? sender, RuntimeEventArgs args)
     {
         var runtime = (RuntimeSession)sender!;
+        if (args.Kind == RuntimeEventKind.Log)
+        {
+            var label = runtime.Mode == RuntimeSessionMode.Scene ? "Scene" : "Play";
+            if (_runtimeLogs.Enqueue(args.Level ?? "Info", $"[{label}] {args.Message}"))
+            {
+                _ = FlushRuntimeLogsAfterDelayAsync();
+            }
+
+            return;
+        }
+
         Dispatcher.UIThread.Post(() => ApplyRuntimeEvent(runtime, args));
+    }
+
+    private async Task FlushRuntimeLogsAfterDelayAsync()
+    {
+        await Task.Delay(250);
+        Dispatcher.UIThread.Post(FlushRuntimeLogs);
+    }
+
+    private void FlushRuntimeLogs()
+    {
+        foreach (var message in _runtimeLogs.Drain())
+        {
+            AddConsole(message.Level, message.Text);
+        }
     }
 
     private void HandleRecoveryWriteFailed(object? sender, Exception exception) =>
@@ -1512,6 +1533,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         switch (args.Kind)
         {
             case RuntimeEventKind.Ready:
+                _runtimeFailuresWithDiagnostics.Remove(runtime);
                 ClearCompatibilityBlock();
                 SetRuntimeStatus(runtime, args.Message);
                 StatusMessage = $"{label} host ready";
@@ -1625,9 +1647,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             case RuntimeEventKind.Unresponsive:
                 _unresponsiveRuntime = runtime;
                 NotifyUnresponsiveRuntime();
-                SetRuntimeStatus(runtime, $"{label} unresponsive");
-                AddConsole("Warning", $"[{label}] {args.Message} Use Wait, Restart, or Stop from the top bar.");
-                PersistDiagnosticBundle(runtime, "Unresponsive runtime", args);
+                SetRuntimeStatus(runtime, $"{label} unresponsive · recovering");
+                AddConsole("Warning", $"[{label}] {args.Message} The host will be stopped automatically to protect the editor.");
+                if (PersistRuntimeDiagnosticOnce(runtime, "Unresponsive runtime", args))
+                {
+                    ScheduleRuntimeFailureContainment(runtime, args.BuildId ?? runtime.BuildId, "Unresponsive runtime");
+                }
+
                 break;
             case RuntimeEventKind.Responsive:
                 ClearUnresponsiveRuntime(runtime);
@@ -1641,6 +1667,15 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 OnPropertyChanged(nameof(CompatibilityBlockSummary));
                 RunUntestedStereoKitCommand.RaiseCanExecuteChanged();
                 AddConsole("Warning", $"[{label}] {args.Message} Running anyway is experimental and only affects this editor session.");
+                break;
+            case RuntimeEventKind.FatalFailure:
+                SetRuntimeStatus(runtime, $"{label} failed · recovering");
+                AddConsole("Error", $"[{label}] {args.Message} The failed host will be stopped automatically.");
+                if (PersistRuntimeDiagnosticOnce(runtime, "Fatal runtime failure", args))
+                {
+                    ScheduleRuntimeFailureContainment(runtime, args.BuildId ?? runtime.BuildId, "Fatal runtime failure");
+                }
+
                 break;
             case RuntimeEventKind.Error:
                 SetRuntimeStatus(runtime, $"{label} error");
@@ -1662,8 +1697,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 }
                 else if (args.Unexpected)
                 {
-                    PersistDiagnosticBundle(runtime, "Unexpected runtime exit", args);
-                    TryScheduleSceneRecovery(args.BuildId);
+                    if (PersistRuntimeDiagnosticOnce(runtime, "Unexpected runtime exit", args))
+                    {
+                        TryScheduleSceneRecovery(args.BuildId);
+                    }
                 }
 
                 break;
@@ -1794,7 +1831,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     private void TryScheduleSceneRecovery(string? buildId)
     {
-        if (_sceneRecoveryInProgress || string.IsNullOrWhiteSpace(buildId))
+        if (_sceneRecoveryInProgress
+            || _sceneFailureContainmentInProgress
+            || string.IsNullOrWhiteSpace(buildId))
         {
             return;
         }
@@ -1818,6 +1857,70 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             finally
             {
                 _sceneRecoveryInProgress = false;
+            }
+        });
+    }
+
+    private void ScheduleRuntimeFailureContainment(
+        RuntimeSession runtime,
+        string? buildId,
+        string reason)
+    {
+        if (runtime.Mode == RuntimeSessionMode.Play)
+        {
+            if (_playFailureContainmentInProgress)
+            {
+                return;
+            }
+
+            _playFailureContainmentInProgress = true;
+            _ = RunSafelyAsync(async () =>
+            {
+                try
+                {
+                    await runtime.StopAsync($"{reason}; stopping failed Play host");
+                    ActiveViewport = RuntimeSessionMode.Scene;
+                    PlayHostStatus = "Play stopped after runtime failure";
+                }
+                finally
+                {
+                    _playFailureContainmentInProgress = false;
+                }
+            });
+            return;
+        }
+
+        if (_sceneFailureContainmentInProgress)
+        {
+            return;
+        }
+
+        _sceneFailureContainmentInProgress = true;
+        var restart = !string.IsNullOrWhiteSpace(buildId)
+            && _sceneCrashRecovery.ShouldRestart(buildId, DateTimeOffset.UtcNow);
+        _ = RunSafelyAsync(async () =>
+        {
+            try
+            {
+                await runtime.StopAsync($"{reason}; containing failed Scene host");
+                ClearUnresponsiveRuntime(runtime);
+                if (restart)
+                {
+                    await RecoverSceneHostAsync(buildId!);
+                }
+                else
+                {
+                    SceneHostStatus = "Scene stopped after runtime failure";
+                    AddConsole(
+                        "Error",
+                        string.IsNullOrWhiteSpace(buildId)
+                            ? "[Scene] Automatic recovery could not identify the failed build. Use Rebuild Scene to continue."
+                            : "[Scene] Crash-loop protection stopped automatic recovery. Use Rebuild Scene after inspecting the runtime log.");
+                }
+            }
+            finally
+            {
+                _sceneFailureContainmentInProgress = false;
             }
         });
     }
@@ -2510,56 +2613,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         RunUntestedStereoKitCommand.RaiseCanExecuteChanged();
     }
 
-    private void WaitForRuntime()
-    {
-        var runtime = _unresponsiveRuntime;
-        if (runtime is null)
-        {
-            return;
-        }
-
-        runtime.WaitForResponse();
-        ClearUnresponsiveRuntime(runtime);
-        StatusMessage = $"Waiting for {(runtime.Mode == RuntimeSessionMode.Scene ? "Scene" : "Game")}…";
-    }
-
-    private async Task RestartUnresponsiveRuntimeAsync()
-    {
-        var runtime = _unresponsiveRuntime;
-        if (runtime is null)
-        {
-            return;
-        }
-
-        var mode = runtime.Mode;
-        ClearUnresponsiveRuntime(runtime);
-        await runtime.StopAsync("Restarting unresponsive runtime");
-        if (mode == RuntimeSessionMode.Scene && _sceneBuild is { } sceneBuild)
-        {
-            await RecoverSceneHostAsync(sceneBuild.BuildId);
-        }
-        else if (mode == RuntimeSessionMode.Play)
-        {
-            await StartPlayAsync();
-        }
-    }
-
-    private async Task StopUnresponsiveRuntimeAsync()
-    {
-        var runtime = _unresponsiveRuntime;
-        if (runtime is null)
-        {
-            return;
-        }
-
-        ClearUnresponsiveRuntime(runtime);
-        await runtime.StopAsync("Stopped after becoming unresponsive");
-        if (runtime.Mode == RuntimeSessionMode.Play)
-        {
-            ActiveViewport = RuntimeSessionMode.Scene;
-        }
-    }
-
     private void ClearUnresponsiveRuntime(RuntimeSession runtime)
     {
         if (!ReferenceEquals(_unresponsiveRuntime, runtime))
@@ -2575,9 +2628,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         OnPropertyChanged(nameof(HasUnresponsiveRuntime));
         OnPropertyChanged(nameof(UnresponsiveRuntimeSummary));
-        WaitForRuntimeCommand.RaiseCanExecuteChanged();
-        RestartUnresponsiveRuntimeCommand.RaiseCanExecuteChanged();
-        StopUnresponsiveRuntimeCommand.RaiseCanExecuteChanged();
     }
 
     private void PersistDiagnosticBundle(RuntimeSession runtime, string reason, RuntimeEventArgs args)
@@ -2608,6 +2658,21 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 Dispatcher.UIThread.Post(() => AddConsole("Warning", $"[{runtime.Mode}] Could not write diagnostic bundle: {exception.Message}"));
             }
         });
+    }
+
+    private bool PersistRuntimeDiagnosticOnce(
+        RuntimeSession runtime,
+        string reason,
+        RuntimeEventArgs args)
+    {
+        FlushRuntimeLogs();
+        if (!_runtimeFailuresWithDiagnostics.Add(runtime))
+        {
+            return false;
+        }
+
+        PersistDiagnosticBundle(runtime, reason, args);
+        return true;
     }
 
     private void HandleSourceFilesChanged(object? sender, IReadOnlyList<string> paths)

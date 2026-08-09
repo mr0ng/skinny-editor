@@ -21,6 +21,7 @@ public sealed class RuntimeSession(RuntimeSessionMode mode) : IAsyncDisposable
     private bool _intentionalStop;
     private bool _wasEverReady;
     private bool _unresponsiveReported;
+    private int _fatalFailureReported;
     private long _lastHeartbeatAckUtcTicks;
     private long _heartbeatSequence;
     private RuntimeLaunchIdentity? _expectedIdentity;
@@ -109,6 +110,7 @@ public sealed class RuntimeSession(RuntimeSessionMode mode) : IAsyncDisposable
             _intentionalStop = false;
             _wasEverReady = false;
             _unresponsiveReported = false;
+            Interlocked.Exchange(ref _fatalFailureReported, 0);
             _lastHeartbeatAckUtcTicks = DateTime.UtcNow.Ticks;
             _heartbeatSequence = 0;
             IsReady = false;
@@ -369,6 +371,15 @@ public sealed class RuntimeSession(RuntimeSessionMode mode) : IAsyncDisposable
 
     public async Task StopAsync(string reason = "Stopped by user")
     {
+        try
+        {
+            _sessionCancellation?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Another lifecycle operation completed teardown while Stop was requested.
+        }
+
         await _lifecycleGate.WaitAsync();
         try
         {
@@ -378,13 +389,6 @@ public sealed class RuntimeSession(RuntimeSessionMode mode) : IAsyncDisposable
         {
             _lifecycleGate.Release();
         }
-    }
-
-    public void WaitForResponse()
-    {
-        _unresponsiveReported = false;
-        Interlocked.Exchange(ref _lastHeartbeatAckUtcTicks, DateTime.UtcNow.Ticks);
-        Emit(new(RuntimeEventKind.Status, $"Waiting for {Mode} host to respond…"));
     }
 
     private async Task HandleMessageAsync(ProtocolEnvelope envelope, CancellationToken cancellationToken)
@@ -494,6 +498,11 @@ public sealed class RuntimeSession(RuntimeSessionMode mode) : IAsyncDisposable
                 {
                     var log = JsonPipeConnection.GetPayload<RuntimeLogMessage>(envelope);
                     Emit(new(RuntimeEventKind.Log, log.Text, Level: log.Level));
+                    if (RuntimeFailureClassifier.TryClassifyFatalLog(log.Level, log.Text, out var failure))
+                    {
+                        ReportFatalFailure(failure, log.Text);
+                    }
+
                     break;
                 }
             case MessageTypes.TransformsCommitted:
@@ -605,9 +614,16 @@ public sealed class RuntimeSession(RuntimeSessionMode mode) : IAsyncDisposable
                     var failure = new InvalidOperationException(error.Message);
                     _readySignal?.TrySetException(failure);
                     _catalogSignal?.TrySetException(failure);
-                    Emit(new(
-                        RuntimeEventKind.Error,
-                        error.Detail is null ? error.Message : $"{error.Message}\n{error.Detail}"));
+                    var message = error.Detail is null ? error.Message : $"{error.Message}\n{error.Detail}";
+                    if (_wasEverReady)
+                    {
+                        ReportFatalFailure(error.Message, error.Detail);
+                    }
+                    else
+                    {
+                        Emit(new(RuntimeEventKind.Error, message));
+                    }
+
                     break;
                 }
         }
@@ -837,6 +853,20 @@ public sealed class RuntimeSession(RuntimeSessionMode mode) : IAsyncDisposable
         }
     }
 
+    private void ReportFatalFailure(string message, string? detail)
+    {
+        if (Interlocked.CompareExchange(ref _fatalFailureReported, 1, 0) != 0)
+        {
+            return;
+        }
+
+        IsReady = false;
+        Emit(new(
+            RuntimeEventKind.FatalFailure,
+            string.IsNullOrWhiteSpace(detail) ? message : $"{message}\n{detail}",
+            BuildId: BuildId));
+    }
+
     private void Emit(RuntimeEventArgs args) => EventReceived?.Invoke(this, args);
 
     private static string TryGetExitCode(Process process)
@@ -904,6 +934,7 @@ public enum RuntimeEventKind
     Unresponsive,
     Responsive,
     CompatibilityBlocked,
+    FatalFailure,
     Error,
     Stopped,
 }
