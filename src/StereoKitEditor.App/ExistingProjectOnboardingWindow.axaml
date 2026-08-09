@@ -1,0 +1,123 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="StereoKitEditor.App.ExistingProjectOnboardingWindow"
+        Title="Import existing StereoKit project"
+        Width="940" Height="720"
+        MinWidth="720" MinHeight="560"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Padding="22,17" Background="#25313A" BorderBrush="#3D5362" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="5">
+        <TextBlock FontSize="20" FontWeight="SemiBold" Text="Existing-project onboarding" />
+        <TextBlock x:Name="ClassificationText" Foreground="#8ED2FF" FontWeight="SemiBold" />
+        <TextBlock x:Name="SummaryText" Foreground="#C2D2DC" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+
+    <TabControl Grid.Row="1" Margin="16,12">
+      <TabItem Header="Compatibility report">
+        <ScrollViewer>
+          <StackPanel Margin="8,12" Spacing="14">
+            <Grid ColumnDefinitions="145,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+              <TextBlock Classes="muted" Text="Selected path" />
+              <TextBlock x:Name="SelectedPathText" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Classes="muted" Text="Project root" />
+              <TextBlock x:Name="ProjectRootText" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="2" Classes="muted" Text="Safe inspection" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="Read-only; MSBuild and project code were not executed" />
+            </Grid>
+
+            <TextBlock FontWeight="SemiBold" Text="Detected projects" />
+            <ItemsControl x:Name="ProjectsList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="0,0,0,6" Padding="10" Classes="panel">
+                    <StackPanel Spacing="3">
+                      <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                      <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" Text="{Binding Details}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock FontWeight="SemiBold" Text="Why" />
+            <ItemsControl x:Name="ReasonsList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate><TextBlock Margin="6,2" TextWrapping="Wrap" Text="{Binding Text}" /></DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+              <StackPanel Spacing="6">
+                <TextBlock FontWeight="SemiBold" Foreground="#81D5A7" Text="Authorable after onboarding" />
+                <ItemsControl x:Name="AuthorableList">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate><TextBlock Margin="6,2" TextWrapping="Wrap" Text="{Binding Text}" /></DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Spacing="6">
+                <TextBlock FontWeight="SemiBold" Foreground="#E7B676" Text="Remains opaque" />
+                <ItemsControl x:Name="OpaqueList">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate><TextBlock Margin="6,2" TextWrapping="Wrap" Text="{Binding Text}" /></DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Grid>
+
+            <TextBlock FontWeight="SemiBold" Text="Prerequisites and warnings" />
+            <ItemsControl x:Name="PrerequisitesList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate><TextBlock Margin="6,2" TextWrapping="Wrap" Text="{Binding Text}" /></DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="Review changes">
+        <Grid Margin="8,12" RowDefinitions="Auto,220,*" RowSpacing="10">
+          <Grid ColumnDefinitions="Auto,280,*,Auto" ColumnSpacing="9">
+            <TextBlock VerticalAlignment="Center" Text="Integration shape" />
+            <ComboBox x:Name="IntegrationChoiceBox" Grid.Column="1" MinWidth="260"
+                      SelectionChanged="HandleIntegrationChanged" />
+            <TextBlock x:Name="IntegrationDescriptionText" Grid.Column="2" VerticalAlignment="Center"
+                       Classes="muted" TextWrapping="Wrap" />
+            <Button x:Name="PreviewButton" Grid.Column="3" MinWidth="120"
+                    Click="HandlePreview" Content="Preview changes" />
+          </Grid>
+
+          <ListBox x:Name="ChangesList" Grid.Row="1" SelectionChanged="HandleChangeSelected">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="5" ColumnDefinitions="90,*,2*">
+                  <TextBlock FontWeight="SemiBold" Text="{Binding Action}" />
+                  <TextBlock Grid.Column="1" FontFamily="Consolas" FontSize="11" Text="{Binding Path}" />
+                  <TextBlock Grid.Column="2" Classes="muted" FontSize="10" TextWrapping="Wrap" Text="{Binding Purpose}" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <TextBox x:Name="DiffText" Grid.Row="2" FontFamily="Consolas" FontSize="11"
+                   IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+                   ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                   Watermark="Select an integration shape and preview its changes." />
+        </Grid>
+      </TabItem>
+    </TabControl>
+
+    <Border Grid.Row="2" Padding="16,12" Background="#20242A" BorderBrush="#363D45" BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+        <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#F0B55A" TextWrapping="Wrap" />
+        <Button x:Name="RollbackButton" Grid.Column="1" MinWidth="120" Click="HandleRollback"
+                IsVisible="False" Content="Roll back" />
+        <Button x:Name="CancelButton" Grid.Column="2" MinWidth="100" Click="HandleCancel" Content="Cancel" />
+        <Button x:Name="ApplyButton" Grid.Column="3" MinWidth="150" Classes="accent"
+                Click="HandleApply" IsEnabled="False" Content="Apply reviewed changes" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

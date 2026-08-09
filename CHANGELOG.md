@@ -8,6 +8,14 @@ All notable public changes to SKinny Editor are recorded here.
 
 - A launcher-based New Project workflow that safely generates a complete StereoKit application from a bundled, versioned starter template.
 - Generated projects include fresh document IDs, a normal standalone entry point, editor adapter, initial scene, pinned local SDK packages, and first-open trust/build validation.
+- Read-only analysis and compatibility reporting for existing StereoKit solutions and projects.
+- Previewed direct opt-in and dedicated editor-head scaffolding with transactional apply,
+  persistent reports, backups, and hash-guarded rollback that preserves later user edits.
+
+### Known limitations
+
+- Direct opt-in still requires explicit review of the generated startup hook, and deeper
+  restore/build/Scene/Play validation requires workspace trust.
 
 ## [0.3.0-preview.1] - 2026-08-08
 

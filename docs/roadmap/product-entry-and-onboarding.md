@@ -1,8 +1,6 @@
 # Windows installation, Project Hub, and project onboarding
 
-Status: **planned — next product phase (Phase 4)**
-
-Status: planned product phase following the current portable Windows preview.
+Status: **in progress — existing-project transactional foundation delivered**
 
 ## Purpose
 
@@ -18,8 +16,8 @@ The phase does not weaken the existing project boundary: StereoKit projects rema
 | Distribution | Self-contained portable Windows folder and verified ZIP/checksum | Signed installer, uninstall support, Start-menu entry, and optional desktop shortcut |
 | Starting the editor | Run the executable or pass `--project`; the no-project build shows a basic launcher | A dedicated Project Hub is the normal start surface |
 | Existing SKinny project | Browse to or pass an existing `.skproject.json`; recent projects are available in the editor | Open and manage existing projects from the Hub, Explorer/file launch, and validated recents |
-| New project | A bundled example proves the SDK and adapter workflow | A complete, selectable template is generated, restored, built, and launched automatically |
-| Existing StereoKit project | Manual analysis and opt-in scaffolding | Non-destructive analysis, compatibility report, previewed changes, selectable integration shape, validation, and rollback |
+| New project | A launcher workflow generates the bundled, pinned starter template and opens it through first-run trust/build validation | Selectable templates, target/version choices, staged restore/build, and automatic first Scene/Play verification |
+| Existing StereoKit project | Safe analysis, compatibility report, reviewed direct/dedicated scaffolding, transaction report, safe validation, and rollback | Trust-gated restore/build/handshake/Scene/Play validation and broader guided remediation |
 | Updates | Replace the portable folder manually | Defined signing, release-channel, update-check, rollback, and compatibility strategy |
 
 ## Product principles
@@ -136,6 +134,13 @@ The exact layout is template-versioned, but a complete project contains:
 - Offline/missing-package failures are recoverable and identify which feed or package is unavailable.
 
 ## Workstream D — Existing-project onboarding
+
+Current implementation: the portable launcher exposes safe `.sln`/`.csproj`
+inspection, the compatibility/opaque-content report, selectable direct or
+dedicated-head proposals, per-file diff review, manifest-backed apply,
+persistent reports, safe descriptor validation, and hash-guarded rollback.
+Restore/build/adapter/Scene/Play validation remains behind the existing
+workspace-trust prompt and is the next integration step for this workstream.
 
 ### Analysis is read-only
 

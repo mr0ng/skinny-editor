@@ -32,7 +32,7 @@
 SKinny Editor brings the parts of a StereoKit project that benefit from direct manipulation into a visual scene editor. The application keeps authored data in readable, stable-ID scene files and runs project behavior through explicit adapters in isolated StereoKit processes.
 
 > [!NOTE]
-> SKinny Editor is an active **public preview, currently available for Windows**. The visual-authoring foundation is usable today; installation, the Project Hub, and streamlined onboarding for existing projects are the next major product phase.
+> SKinny Editor is an active **public preview, currently available for Windows**. The visual-authoring foundation, starter-project generator, and non-destructive existing-project importer are usable today; installation and the full Project Hub remain active product work.
 
 ## See the workflow
 
@@ -182,7 +182,7 @@ for the current portable workflow and planned desktop integration.
 
 ## Project status
 
-The editor foundation, visual-content pipeline, spatial-UI vertical slice, isolated Scene/Game workflow, and Windows portable distribution are implemented. The next product phase focuses on a branded installer, desktop integration, a Project Hub, new-project generation, and non-destructive onboarding for existing StereoKit projects. Hardware-dependent DPI, GPU, device-loss, and hands-on viewport acceptance continue alongside that work.
+The editor foundation, visual-content pipeline, spatial-UI vertical slice, isolated Scene/Game workflow, Windows portable distribution, starter-project generation, and transactional existing-project onboarding are implemented. The next product work focuses on a branded installer, desktop integration, the full Project Hub, broader template/version selection, and deeper trust-gated onboarding validation. Hardware-dependent DPI, GPU, device-loss, and hands-on viewport acceptance continue alongside that work.
 
 The current editor distribution and native embedding bridge target Windows. A future macOS edition can share the same scene, adapter, and asset formats while using its own platform integration; it is not part of the current delivery schedule.
 

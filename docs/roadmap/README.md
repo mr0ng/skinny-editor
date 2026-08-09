@@ -16,6 +16,9 @@ testing, and contributor feedback.
 - Project-owned component catalogs and generated Inspector presentations
 - Workspace trust, diagnostics, crash recovery, and child-process cleanup
 - Preview SDK packages and a self-contained Windows distribution
+- Launcher-based starter-project generation with pinned local SDK packages
+- Read-only existing-project analysis, compatibility reports, reviewed scaffolding,
+  transaction manifests, persistent onboarding reports, and hash-guarded rollback
 
 ## Current product focus
 
@@ -23,9 +26,9 @@ The next major phase turns the portable preview into a normal Windows product:
 
 1. Installer, uninstall support, Start-menu entry, shortcuts, and file association
 2. Project Hub with new, existing, recent, and imported project workflows
-3. New-project generation with StereoKit dependencies and first-run verification
-4. Non-destructive analysis and onboarding for existing StereoKit projects
-5. Compatibility reporting, previewed changes, validation, and rollback
+3. Expand new-project template/version selection and first-run verification
+4. Expand existing-project onboarding with trust-gated restore/build/Scene/Play validation
+5. Broaden compatibility fixtures and guided manual-integration remediation
 6. Code-signing, update, and release-channel strategy
 
 See [Windows product entry and onboarding](product-entry-and-onboarding.md) for
