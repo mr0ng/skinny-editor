@@ -1,10 +1,10 @@
-# Windows installation, Project Hub, and project onboarding
+# Windows project entry and onboarding
 
-Status: **in progress — existing-project transactional foundation delivered**
+Status: **in progress — starter generation and existing-project transactional foundation delivered**
 
 ## Purpose
 
-Phase 4 turns the current portable, descriptor-driven Windows preview into a product that can be launched, installed, and used without starting in a terminal or manually scaffolding editor integration.
+Phase 4 makes the portable, descriptor-driven Windows preview easier to use without starting in a terminal or manually scaffolding editor integration. The verified portable ZIP remains the supported distribution.
 
 The phase does not weaken the existing project boundary: StereoKit projects remain normal `.sln`/`.csproj` projects, project code continues to run outside the editor process, and onboarding must not silently convert or take ownership of an existing application.
 
@@ -12,13 +12,10 @@ The phase does not weaken the existing project boundary: StereoKit projects rema
 
 | Capability | Current baseline | Phase 4 result |
 |---|---|---|
-| Application identity | Branded multi-resolution icon is already applied to the executable, windows, taskbar, and dialogs | The same identity flows through installer, uninstall entry, shortcuts, file launch, and update UI |
-| Distribution | Self-contained portable Windows folder and verified ZIP/checksum | Signed installer, uninstall support, Start-menu entry, and optional desktop shortcut |
 | Starting the editor | Run the executable or pass `--project`; the no-project build shows a basic launcher | A dedicated Project Hub is the normal start surface |
-| Existing SKinny project | Browse to or pass an existing `.skproject.json`; recent projects are available in the editor | Open and manage existing projects from the Hub, Explorer/file launch, and validated recents |
+| Existing SKinny project | Browse to or pass an existing `.skproject.json`; recent projects are available in the editor | Open and manage existing projects from the Hub with validated recents |
 | New project | A launcher workflow generates the bundled, pinned starter template and opens it through first-run trust/build validation | Selectable templates, target/version choices, staged restore/build, and automatic first Scene/Play verification |
 | Existing StereoKit project | Safe analysis, compatibility report, reviewed direct/dedicated scaffolding, transaction report, safe validation, and rollback | Trust-gated restore/build/handshake/Scene/Play validation and broader guided remediation |
-| Updates | Replace the portable folder manually | Defined signing, release-channel, update-check, rollback, and compatibility strategy |
 
 ## Product principles
 
@@ -27,43 +24,9 @@ The phase does not weaken the existing project boundary: StereoKit projects rema
 3. **Honest compatibility.** The Hub reports what can be authored, what can only be run, and what remains opaque. It never promises to reconstruct arbitrary code-first draw calls into a hierarchy.
 4. **Transactional changes.** Planned writes have a manifest, preflight validation, recoverable backups where existing files change, and a tested rollback path.
 5. **Pinned and reproducible dependencies.** Generated projects record explicit .NET, StereoKit, runtime SDK, adapter, protocol, and scene-format versions.
-6. **Trust remains a boundary.** Opening a descriptor or double-clicking a project file may inspect safe metadata, but it does not build or execute project code until workspace trust is granted.
+6. **Trust remains a boundary.** Opening a descriptor or inspecting project metadata does not build or execute project code until workspace trust is granted.
 
-## Workstream A — Windows installation and desktop integration
-
-### Scope
-
-- Retain and verify the delivered branded application icon at all Windows shell sizes.
-- Produce an installer with a normal uninstall entry.
-- Create a Start-menu application entry.
-- Offer a desktop shortcut as an explicit installer option.
-- Register the selected project-file launch experience.
-- Preserve user projects during uninstall. Preferences, caches, recovery data, and SDK packages need individually documented retain/remove behavior.
-- Define per-user versus per-machine installation, elevation, repair, upgrade, and downgrade behavior.
-- Sign installer, executable, updater, and release metadata when a production certificate is available.
-- Define stable/preview channels, update discovery, download verification, compatibility checks, rollback, and release notes.
-
-### Project-file association decision gate
-
-Windows normally associates the final filename extension, so `.skproject.json` is treated as `.json`. Claiming `.json` would be unsafe because it would affect unrelated JSON files.
-
-Before shell registration, choose and test one of these approaches:
-
-1. Introduce a dedicated project extension such as `.skinnyproject` whose contents retain the versioned JSON descriptor shape; this is the recommended low-complexity option.
-2. Keep `.skproject.json` and add a narrowly scoped Explorer shell verb/handler that recognizes the complete suffix; this carries more implementation and maintenance cost.
-3. Keep `.skproject.json` browse/drag-and-drop only and defer direct Explorer launch.
-
-The installer must not register SKinny Editor as the default handler for all `.json` files.
-
-### Acceptance criteria
-
-- A clean Windows user can install, launch from Start, optionally launch from a desktop shortcut, repair/upgrade, and uninstall.
-- Explorer project launch opens the Hub/project safely without running code before trust.
-- Upgrade preserves projects, recents, preferences, and compatible recovery data.
-- Uninstall behavior clearly states which per-user data is retained and offers an explicit cleanup path.
-- Every downloaded update is authenticated before execution, and a failed update leaves a runnable prior version.
-
-## Workstream B — Project Hub
+## Workstream A — Project Hub
 
 The Hub becomes the default no-project window and the return point after closing a project.
 
@@ -91,7 +54,13 @@ The Hub becomes the default no-project window and the return point after closing
 - Prerequisite failures identify the exact missing SDK/workload/package/source and provide a retry path.
 - No project code runs merely because its card appears in the Hub.
 
-## Workstream C — New-project creation
+## Workstream B — New-project creation
+
+Current implementation: the launcher generates one versioned starter through a
+collision-safe staging transaction, assigns fresh project and scene IDs, copies
+the pinned SDK feed, and opens the generated descriptor through the normal
+workspace-trust and first-build path. Template/target selection, dedicated
+progress and diagnostics, and automatic Scene/Play verification remain.
 
 ### Generated project set
 
@@ -133,7 +102,7 @@ The exact layout is template-versioned, but a complete project contains:
 - Repeating creation never overwrites a non-empty destination.
 - Offline/missing-package failures are recoverable and identify which feed or package is unavailable.
 
-## Workstream D — Existing-project onboarding
+## Workstream C — Existing-project onboarding
 
 Current implementation: the portable launcher exposes safe `.sln`/`.csproj`
 inspection, the compatibility/opaque-content report, selectable direct or
@@ -219,8 +188,6 @@ The final report must distinguish:
 
 ### Phase 4.0 — decision and transaction foundations
 
-- Select installer/update technology and installation scope.
-- Resolve the `.skproject.json` shell-association issue.
 - Define supported .NET/StereoKit/template version matrix.
 - Implement project-analysis result, proposed-change, transaction-manifest, validation-result, and rollback models with destructive-boundary tests.
 
@@ -246,12 +213,13 @@ Exit: a new user creates and runs a normal StereoKit project without using a ter
 
 Exit: small and complex test fixtures complete their supported onboarding paths while preserving normal application behavior.
 
-### Phase 4.4 — installer, shell integration, signing, and updates
+## Deferred distribution work
 
-- Produce installer/uninstaller, Start entry, optional desktop shortcut, selected project-file launch behavior, signing hooks, release channels, authenticated update flow, and rollback.
-- Run clean-machine install/upgrade/downgrade/uninstall tests and independent-user onboarding.
-
-Exit: a non-developer can install, create/open/import, update, and uninstall the Windows product without source checkout or terminal setup beyond prerequisites the Hub explicitly identifies.
+The verified self-contained ZIP remains the supported Windows distribution.
+Installer/uninstaller support, Start-menu and shell integration, code signing,
+release channels, and automatic updates are not part of the active roadmap.
+Revisit them only if user demand shows that the portable workflow is
+insufficient.
 
 ## Explicit exclusions for this phase
 
@@ -259,6 +227,4 @@ Exit: a non-developer can install, create/open/import, update, and uninstall the
 - Automatic rewriting of project-specific application composition without review.
 - Owning or replacing the project's normal build system.
 - Installing Visual Studio, .NET workloads, Android SDKs, or other system-wide developer prerequisites without explicit user action.
-- Associating SKinny Editor with all `.json` files.
-- macOS/Linux installers or editor support.
-- A background auto-updater that executes unsigned or unauthenticated payloads.
+- macOS/Linux editor support.

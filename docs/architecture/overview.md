@@ -57,7 +57,7 @@ when a runtime or the editor exits.
 ## Platform direction
 
 The current editor shell, native window embedding, input bridge, packaging,
-installer, and initial device workflows target Windows. Shared scene, adapter,
+and initial device workflows target Windows. Shared scene, adapter,
 asset, and protocol formats remain platform-neutral so a future macOS edition
 can use a separate native shell and embedding implementation. That edition is
 not part of the current delivery schedule.

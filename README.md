@@ -32,7 +32,7 @@
 SKinny Editor brings the parts of a StereoKit project that benefit from direct manipulation into a visual scene editor. The application keeps authored data in readable, stable-ID scene files and runs project behavior through explicit adapters in isolated StereoKit processes.
 
 > [!NOTE]
-> SKinny Editor is an active **public preview, currently available for Windows**. The visual-authoring foundation, starter-project generator, and non-destructive existing-project importer are usable today; installation and the full Project Hub remain active product work.
+> SKinny Editor is an active **public preview, currently available for Windows**. The visual-authoring foundation, starter-project generator, and non-destructive existing-project importer are usable today; the full Project Hub, broader template/version selection, and deeper onboarding validation remain active product work. The portable ZIP remains the supported distribution.
 
 ## See the workflow
 
@@ -168,7 +168,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\package-windows.ps1
 The packaging gate produces a versioned self-contained editor, ZIP archive,
 SHA-256 checksum, license notices, and four paired project SDK packages under
 `artifacts/distribution`. See [installation and onboarding](docs/guides/installation-and-onboarding.md)
-for the current portable workflow and planned desktop integration.
+for the current portable workflow and project setup.
 
 ## Documentation
 
@@ -182,7 +182,7 @@ for the current portable workflow and planned desktop integration.
 
 ## Project status
 
-The editor foundation, visual-content pipeline, spatial-UI vertical slice, isolated Scene/Game workflow, Windows portable distribution, starter-project generation, and transactional existing-project onboarding are implemented. The next product work focuses on a branded installer, desktop integration, the full Project Hub, broader template/version selection, and deeper trust-gated onboarding validation. Hardware-dependent DPI, GPU, device-loss, and hands-on viewport acceptance continue alongside that work.
+The editor foundation, visual-content pipeline, spatial-UI vertical slice, isolated Scene/Game workflow, Windows portable distribution, starter-project generation, and transactional existing-project onboarding are implemented. The next product work focuses on the full Project Hub, broader template/version selection, and deeper trust-gated onboarding validation. Installer, signing, and automatic-update work is deferred until user demand shows that the portable workflow is insufficient. Hardware-dependent DPI, GPU, device-loss, and hands-on viewport acceptance continue alongside that work.
 
 The current editor distribution and native embedding bridge target Windows. A future macOS edition can share the same scene, adapter, and asset formats while using its own platform integration; it is not part of the current delivery schedule.
 

@@ -22,16 +22,15 @@ testing, and contributor feedback.
 
 ## Current product focus
 
-The next major phase turns the portable preview into a normal Windows product:
+The next major phase makes project entry and onboarding easier while retaining
+the portable Windows ZIP as the supported distribution:
 
-1. Installer, uninstall support, Start-menu entry, shortcuts, and file association
-2. Project Hub with new, existing, recent, and imported project workflows
-3. Expand new-project template/version selection and first-run verification
-4. Expand existing-project onboarding with trust-gated restore/build/Scene/Play validation
-5. Broaden compatibility fixtures and guided manual-integration remediation
-6. Code-signing, update, and release-channel strategy
+1. Complete Project Hub workflows for new, existing, recent, and imported projects
+2. Expand new-project template/version selection and automatic Scene/Play verification
+3. Expand existing-project onboarding with trust-gated restore/build/Scene/Play validation
+4. Broaden compatibility fixtures and guided manual-integration remediation
 
-See [Windows product entry and onboarding](product-entry-and-onboarding.md) for
+See [Windows project entry and onboarding](product-entry-and-onboarding.md) for
 the detailed implementation sequence.
 
 ## Ongoing usability and compatibility
@@ -44,6 +43,9 @@ the detailed implementation sequence.
 
 ## Deferred
 
+- Installer/uninstaller, Start-menu and shell integration, code signing,
+  release channels, and automatic updates; revisit if user demand makes the
+  portable ZIP insufficient
 - macOS and Linux editor shells
 - A general-purpose visual scripting system
 - Automatic reconstruction of arbitrary runtime draw calls
