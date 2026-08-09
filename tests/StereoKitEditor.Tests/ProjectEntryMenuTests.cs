@@ -27,6 +27,26 @@ public sealed class ProjectEntryMenuTests
             item => Assert.Equal(("Recent Projects…", "RecentProjects_Click"), item));
     }
 
+    [Fact]
+    public void ExistingProjectOnboarding_UsesOptionalReviewAndImportOpenPrimaryAction()
+    {
+        var path = Path.Combine(
+            FindWorkspaceRoot(),
+            "src",
+            "StereoKitEditor.App",
+            "ExistingProjectOnboardingWindow.axaml");
+        var document = XDocument.Load(path);
+        var buttons = document.Descendants()
+            .Where(element => element.Name.LocalName == "Button")
+            .ToArray();
+
+        var review = Assert.Single(buttons, button => ReadName(button) == "ReviewButton");
+        Assert.Equal("Review changes", (string?)review.Attribute("Content"));
+        var apply = Assert.Single(buttons, button => ReadName(button) == "ApplyButton");
+        Assert.Equal("Import & Open", (string?)apply.Attribute("Content"));
+        Assert.DoesNotContain(buttons, button => ReadName(button) == "PreviewButton");
+    }
+
     private static IReadOnlyList<(string Header, string Handler)> ReadOpenProjectMenu(params string[] pathParts)
     {
         var path = Path.Combine([FindWorkspaceRoot(), .. pathParts]);
@@ -44,6 +64,10 @@ public sealed class ProjectEntryMenuTests
                 (string?)element.Attribute("Click") ?? string.Empty))
             .ToArray();
     }
+
+    private static string? ReadName(XElement element) => element.Attributes()
+        .FirstOrDefault(attribute => attribute.Name.LocalName == "Name")?
+        .Value;
 
     private static string FindWorkspaceRoot()
     {

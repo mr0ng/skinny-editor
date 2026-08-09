@@ -13,11 +13,12 @@ All notable public changes to SKinny Editor are recorded here.
   persistent reports, backups, and hash-guarded rollback that preserves later user edits.
 - A shared **Open Project** menu for opening SKinny descriptors, importing existing
   StereoKit projects, and accessing recent projects from the launcher or editor.
+- One-step **Import & Open** onboarding with syntax-aware startup integration,
+  automatic isolated-head fallback, resumable partial imports, and a project-local SDK feed.
 
 ### Known limitations
 
-- Direct opt-in still requires explicit review of the generated startup hook, and deeper
-  restore/build/Scene/Play validation requires workspace trust.
+- Deeper restore/build/Scene/Play validation still requires explicit workspace trust.
 
 ## [0.3.0-preview.1] - 2026-08-08
 

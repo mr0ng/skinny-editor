@@ -53,7 +53,7 @@ public partial class ExistingProjectOnboardingWindow : Window
         IntegrationChoiceBox.ItemsSource = choices;
         IntegrationChoiceBox.SelectedItem = choices.FirstOrDefault(choice =>
             choice.Shape == _analysis.RecommendedIntegration) ?? choices.FirstOrDefault();
-        PreviewButton.IsEnabled = choices.Length > 0;
+        ReviewButton.IsVisible = choices.Length > 0;
 
         if (_analysis.Compatibility == ExistingProjectCompatibility.ReadyToOpen)
         {
@@ -70,6 +70,10 @@ public partial class ExistingProjectOnboardingWindow : Window
         {
             StatusText.Text = "No safe automatic proposal is available. Review the compatibility report for manual work.";
         }
+        else
+        {
+            PrepareProposal();
+        }
     }
 
     private void HandleIntegrationChanged(object? sender, SelectionChangedEventArgs args)
@@ -79,16 +83,19 @@ public partial class ExistingProjectOnboardingWindow : Window
             IntegrationDescriptionText.Text = choice.Description;
         }
 
+        PrepareProposal();
+    }
+
+    private void PrepareProposal()
+    {
         _proposal = null;
         ChangesList.ItemsSource = null;
         DiffText.Text = string.Empty;
+        ApplyButton.Tag = null;
         ApplyButton.IsEnabled = false;
-        ApplyButton.Content = "Apply reviewed changes";
-        StatusText.Text = "Preview again after changing the integration shape.";
-    }
-
-    private void HandlePreview(object? sender, RoutedEventArgs args)
-    {
+        ApplyButton.Content = _analysis.Compatibility == ExistingProjectCompatibility.IncompleteOnboarding
+            ? "Finish setup & open"
+            : "Import & Open";
         if (IntegrationChoiceBox.SelectedItem is not IntegrationChoice choice)
         {
             return;
@@ -105,7 +112,7 @@ public partial class ExistingProjectOnboardingWindow : Window
             ChangesList.ItemsSource = changes;
             ChangesList.SelectedItem = changes.FirstOrDefault();
             ApplyButton.IsEnabled = changes.Length > 0;
-            StatusText.Text = $"Review all {changes.Length} create/modify actions before applying. No build or project code will run.";
+            StatusText.Text = $"Ready to apply {changes.Length} reversible change{(changes.Length == 1 ? string.Empty : "s")}. Review is optional; no build or project code will run.";
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
                                            or InvalidDataException or InvalidOperationException)
@@ -115,6 +122,8 @@ public partial class ExistingProjectOnboardingWindow : Window
             StatusText.Text = exception.Message;
         }
     }
+
+    private void HandleReview(object? sender, RoutedEventArgs args) => OnboardingTabs.SelectedIndex = 1;
 
     private void HandleChangeSelected(object? sender, SelectionChangedEventArgs args)
     {
@@ -137,12 +146,6 @@ public partial class ExistingProjectOnboardingWindow : Window
 
     private async void HandleApply(object? sender, RoutedEventArgs args)
     {
-        if (ApplyButton.Tag is ExistingProjectOnboardingResult completed)
-        {
-            Close(completed);
-            return;
-        }
-
         if (ApplyButton.Tag is string existingDescriptor)
         {
             Close(new ExistingProjectOnboardingResult(
@@ -158,28 +161,18 @@ public partial class ExistingProjectOnboardingWindow : Window
         }
 
         ApplyButton.IsEnabled = false;
-        PreviewButton.IsEnabled = false;
+        ReviewButton.IsEnabled = false;
         IntegrationChoiceBox.IsEnabled = false;
-        StatusText.Text = "Applying the reviewed transaction…";
+        CancelButton.IsEnabled = false;
+        StatusText.Text = "Applying the onboarding transaction…";
         try
         {
             var result = await _transactions.ApplyAsync(_proposal);
-            var message = _proposal.IntegrationShape == OnboardingIntegrationShape.DirectOptIn
-                ? $"Scaffolding applied. Complete the startup hook described in SKinnyEditor/README.md. Persistent report: {result.ReportPath}"
-                : $"Dedicated editor head applied and safely validated. Persistent report: {result.ReportPath}";
-            ApplyButton.Tag = new ExistingProjectOnboardingResult(
-                _proposal.IntegrationShape == OnboardingIntegrationShape.DedicatedEditorHead
-                    ? result.DescriptorPath
-                    : null,
+            var message = $"Import completed and safely validated. Persistent report: {result.ReportPath}";
+            Close(new ExistingProjectOnboardingResult(
+                result.DescriptorPath,
                 result.ManifestPath,
-                message);
-            ApplyButton.Content = _proposal.IntegrationShape == OnboardingIntegrationShape.DedicatedEditorHead
-                ? "Open project"
-                : "Done";
-            ApplyButton.IsEnabled = true;
-            RollbackButton.IsVisible = true;
-            CancelButton.Content = "Close";
-            StatusText.Text = message;
+                message));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
                                            or InvalidDataException
@@ -187,42 +180,9 @@ public partial class ExistingProjectOnboardingWindow : Window
         {
             StatusText.Text = exception.Message;
             ApplyButton.IsEnabled = true;
-            PreviewButton.IsEnabled = true;
+            ReviewButton.IsEnabled = true;
             IntegrationChoiceBox.IsEnabled = true;
-        }
-    }
-
-    private async void HandleRollback(object? sender, RoutedEventArgs args)
-    {
-        if (ApplyButton.Tag is not ExistingProjectOnboardingResult { ManifestPath: not null } completed)
-        {
-            return;
-        }
-
-        RollbackButton.IsEnabled = false;
-        ApplyButton.IsEnabled = false;
-        StatusText.Text = "Rolling back files that still match the onboarding transaction…";
-        try
-        {
-            var result = await _transactions.RollbackAsync(completed.ManifestPath);
-            RollbackButton.IsVisible = false;
-            ApplyButton.Tag = new ExistingProjectOnboardingResult(
-                null,
-                completed.ManifestPath,
-                result.Status == OnboardingTransactionStatus.RolledBack
-                    ? "Onboarding was rolled back. The transaction manifest and backups were retained."
-                    : $"Rollback preserved conflicting edits: {string.Join(" ", result.Conflicts)}");
-            ApplyButton.Content = "Close";
-            ApplyButton.IsEnabled = true;
-            StatusText.Text = ((ExistingProjectOnboardingResult)ApplyButton.Tag).Message;
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
-                                           or InvalidDataException
-                                           or InvalidOperationException)
-        {
-            StatusText.Text = exception.Message;
-            RollbackButton.IsEnabled = true;
-            ApplyButton.IsEnabled = true;
+            CancelButton.IsEnabled = true;
         }
     }
 
@@ -230,24 +190,42 @@ public partial class ExistingProjectOnboardingWindow : Window
 
     private static IEnumerable<IntegrationChoice> CreateIntegrationChoices(ExistingProjectAnalysis analysis)
     {
-        if (analysis.Compatibility is ExistingProjectCompatibility.DirectOptInSupported
-            or ExistingProjectCompatibility.DedicatedEditorHeadRecommended)
-        {
-            yield return new(
+        var startup = analysis.RecommendedStartupProject;
+        var canUseDirect =
+            (analysis.Compatibility is ExistingProjectCompatibility.DirectOptInSupported
+                or ExistingProjectCompatibility.IncompleteOnboarding)
+            && startup is not null
+            && startup.TargetFrameworks.Any(
+                ExistingStereoKitProjectAnalyzer.IsEditorRuntimeCompatibleFramework)
+            && (startup.HasEditorLaunchHook || startup.CanAddEditorLaunchHook);
+        var canUseDedicated = startup is not null
+                              && (analysis.Compatibility is
+                                  ExistingProjectCompatibility.DirectOptInSupported
+                                  or ExistingProjectCompatibility.DedicatedEditorHeadRecommended
+                                  or ExistingProjectCompatibility.IncompleteOnboarding)
+                              && startup.TargetFrameworks.Any(
+                                  ExistingStereoKitProjectAnalyzer.CanReferenceFromDedicatedHeadFramework);
+        var shapes = new[]
+            {
                 OnboardingIntegrationShape.DirectOptIn,
-                "Main-project opt-in",
-                "Adds a runtime package and isolated adapter helper; you explicitly connect the startup hook.");
-        }
-
-        if (analysis.Compatibility is ExistingProjectCompatibility.DirectOptInSupported
-            or ExistingProjectCompatibility.DedicatedEditorHeadRecommended
-            or ExistingProjectCompatibility.ManualIntegrationRequired
-            && analysis.RecommendedIntegration == OnboardingIntegrationShape.DedicatedEditorHead)
-        {
-            yield return new(
                 OnboardingIntegrationShape.DedicatedEditorHead,
-                "Dedicated editor head",
-                "Creates a separate editor-only executable and leaves the production composition root untouched.");
+            }
+            .Where(shape => shape == OnboardingIntegrationShape.DirectOptIn
+                ? canUseDirect
+                : canUseDedicated)
+            .OrderByDescending(shape => shape == analysis.RecommendedIntegration);
+        foreach (var shape in shapes)
+        {
+            var recommended = shape == analysis.RecommendedIntegration;
+            yield return shape == OnboardingIntegrationShape.DirectOptIn
+                ? new(
+                    shape,
+                    recommended ? "Automatic (recommended) — Main project" : "Main-project integration",
+                    "Adds a guarded editor launch to the existing entry point; normal launches remain unchanged.")
+                : new(
+                    shape,
+                    recommended ? "Automatic (recommended) — Isolated head" : "Dedicated editor head",
+                    "Creates a separate editor-only executable and leaves the production entry point untouched.");
         }
     }
 
@@ -258,6 +236,7 @@ public partial class ExistingProjectOnboardingWindow : Window
     private static string FormatClassification(ExistingProjectCompatibility compatibility) => compatibility switch
     {
         ExistingProjectCompatibility.ReadyToOpen => "Ready to open",
+        ExistingProjectCompatibility.IncompleteOnboarding => "Ready to finish automatically",
         ExistingProjectCompatibility.DirectOptInSupported => "Direct opt-in supported",
         ExistingProjectCompatibility.DedicatedEditorHeadRecommended => "Dedicated editor head recommended",
         ExistingProjectCompatibility.ManualIntegrationRequired => "Manual integration required",

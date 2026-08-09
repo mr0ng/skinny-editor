@@ -4,11 +4,17 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace StereoKitEditor.ProjectSystem;
 
-public sealed class OnboardingProposalBuilder(string? runtimePackageVersion = null)
+public sealed class OnboardingProposalBuilder(
+    string? runtimePackageVersion = null,
+    string? sdkPackageDirectory = null)
 {
+    private readonly string? _sdkPackageDirectory = sdkPackageDirectory;
+
     public string RuntimePackageVersion { get; } = runtimePackageVersion ?? GetRuntimePackageVersion();
 
     public OnboardingProposal Create(
@@ -17,6 +23,7 @@ public sealed class OnboardingProposalBuilder(string? runtimePackageVersion = nu
     {
         ArgumentNullException.ThrowIfNull(analysis);
         if (analysis.Compatibility is ExistingProjectCompatibility.ReadyToOpen
+            or ExistingProjectCompatibility.ManualIntegrationRequired
             or ExistingProjectCompatibility.Unsupported)
         {
             throw new InvalidOperationException(
@@ -32,67 +39,87 @@ public sealed class OnboardingProposalBuilder(string? runtimePackageVersion = nu
                 "Direct opt-in requires a net8.0-or-newer startup target. Choose a dedicated editor head.");
         }
 
+        if (integrationShape == OnboardingIntegrationShape.DedicatedEditorHead
+            && !startupProject.TargetFrameworks.Any(
+                ExistingStereoKitProjectAnalyzer.CanReferenceFromDedicatedHeadFramework))
+        {
+            throw new InvalidOperationException(
+                "A desktop net8.0 editor head cannot safely reference the selected project's target framework.");
+        }
+
         var proposalKey = $"{Path.GetFullPath(analysis.ProjectRoot)}|{startupProject.Path}|{integrationShape}|{RuntimePackageVersion}";
         var proposalId = CreateStableGuid($"proposal|{proposalKey}");
         var projectId = CreateStableGuid($"project|{proposalKey}");
         var sceneId = CreateStableGuid($"scene|{proposalKey}");
         var safeName = CreateSafeName(startupProject.Name);
         var onboardingDirectory = "SKinnyEditor";
-        var descriptorRelativePath = Path.Combine(onboardingDirectory, $"{safeName}.skproject.json");
+        var isResume = analysis.Compatibility == ExistingProjectCompatibility.IncompleteOnboarding;
+        var descriptorRelativePath = isResume && integrationShape == OnboardingIntegrationShape.DirectOptIn
+                                     && analysis.ValidDescriptorPaths.FirstOrDefault() is { } existingDescriptor
+            ? NormalizeRelativePath(Path.GetRelativePath(analysis.ProjectRoot, existingDescriptor))
+            : Path.Combine(
+                onboardingDirectory,
+                isResume && integrationShape == OnboardingIntegrationShape.DedicatedEditorHead
+                    ? $"{safeName}.editor.skproject.json"
+                    : $"{safeName}.skproject.json");
         var changes = new List<OnboardingProposedChange>();
+
+        AddSdkFeedChanges(analysis, startupProject, changes);
 
         if (integrationShape == OnboardingIntegrationShape.DirectOptIn)
         {
-            AddDirectOptInChanges(analysis, startupProject, changes);
+            AddDirectOptInChanges(analysis, startupProject, changes, isResume);
         }
         else
         {
-            AddDedicatedHeadChanges(analysis.ProjectRoot, startupProject, safeName, changes);
+            AddDedicatedHeadChanges(analysis.ProjectRoot, startupProject, safeName, changes, isResume);
         }
 
-        AddCreate(
+        AddGeneratedText(
             analysis.ProjectRoot,
             changes,
             descriptorRelativePath,
             "Create the explicit SKinny project descriptor.",
-            CreateDescriptor(analysis, startupProject, integrationShape, safeName, projectId));
-        AddCreate(
+            CreateDescriptor(analysis, startupProject, integrationShape, safeName, projectId),
+            reuseExisting: isResume && integrationShape == OnboardingIntegrationShape.DirectOptIn);
+        AddGeneratedText(
             analysis.ProjectRoot,
             changes,
             Path.Combine(onboardingDirectory, "Scenes", "Main.skscene.json"),
             "Create an empty, source-readable initial scene.",
-            CreateScene(sceneId, startupProject.Name));
-        AddCreate(
+            CreateScene(sceneId, startupProject.Name),
+            reuseExisting: isResume);
+        AddGeneratedText(
             analysis.ProjectRoot,
             changes,
             Path.Combine(onboardingDirectory, "Assets", ".gitkeep"),
             "Materialize the project-controlled authoring asset root.",
-            string.Empty);
+            string.Empty,
+            reuseExisting: isResume);
 
         var impact = integrationShape == OnboardingIntegrationShape.DirectOptIn
             ? new[]
             {
-                "Adds one pinned runtime package reference and isolated onboarding source files.",
+                "Adds one pinned runtime package reference, a project-local SDK feed, and isolated onboarding source files.",
+                "Adds a small editor-launch guard before normal application startup.",
                 "Does not replace the existing application entry point or normal launch path.",
                 "The generated descriptor remains project-controlled and can be removed through rollback.",
             }
             : new[]
             {
-                "Creates a separate editor-only executable that references the selected production project.",
+                "Creates a separate editor-only executable and project-local SDK feed.",
                 "Does not modify the selected production project or its composition root.",
                 "The normal command-line and IDE launch path remains unchanged.",
             };
         var manualWork = integrationShape == OnboardingIntegrationShape.DirectOptIn
             ? new[]
             {
-                "Review and add the generated EditorEntryPoint.TryRun call before normal StereoKit startup.",
-                "Register project-specific component schemas in GeneratedProjectAdapter.",
+                "Optionally register project-specific component schemas in GeneratedProjectAdapter.",
                 "Grant workspace trust before restore, build, Scene, or Play validation.",
             }
             : new[]
             {
-                "Register project-specific component schemas in GeneratedProjectAdapter.",
-                "Review which production references and assets the dedicated head may access.",
+                "Optionally register project-specific component schemas in GeneratedProjectAdapter.",
                 "Grant workspace trust before restore, build, Scene, or Play validation.",
             };
 
@@ -118,7 +145,8 @@ public sealed class OnboardingProposalBuilder(string? runtimePackageVersion = nu
     private void AddDirectOptInChanges(
         ExistingProjectAnalysis analysis,
         InspectedDotnetProject startupProject,
-        ICollection<OnboardingProposedChange> changes)
+        ICollection<OnboardingProposedChange> changes,
+        bool isResume)
     {
         if (!startupProject.ReferencesEditorRuntime)
         {
@@ -151,48 +179,398 @@ public sealed class OnboardingProposalBuilder(string? runtimePackageVersion = nu
             }
         }
 
-        AddCreate(
+        var hook = CSharpEntryPointHookPlanner.Analyze(startupProject.Path);
+        if (hook.Status == EditorLaunchHookPlanStatus.Ready
+            && hook.SourcePath is not null
+            && hook.OriginalText is not null
+            && hook.ProposedText is not null)
+        {
+            var original = ReadUtf8Text(hook.SourcePath);
+            if (!string.Equals(original.Text, hook.OriginalText, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"The entry point changed while onboarding was being prepared: {hook.SourcePath}");
+            }
+
+            AddModify(
+                analysis.ProjectRoot,
+                changes,
+                hook.SourcePath,
+                "Route explicit editor launches before normal application startup.",
+                original,
+                hook.ProposedText);
+        }
+        else if (hook.Status != EditorLaunchHookPlanStatus.AlreadyPresent)
+        {
+            throw new InvalidOperationException(
+                $"The production entry point cannot be changed automatically. Choose a dedicated editor head. {hook.Message}");
+        }
+
+        AddGeneratedText(
             analysis.ProjectRoot,
             changes,
             Path.Combine("SKinnyEditor", "EditorAdapter.cs"),
             "Add an isolated runtime entry helper and an empty project adapter.",
-            CreateAdapterSource(includeMain: false));
-        AddCreate(
+            CreateAdapterSource(includeMain: false),
+            reuseExisting: isResume);
+        AddGeneratedText(
             analysis.ProjectRoot,
             changes,
             Path.Combine("SKinnyEditor", "README.md"),
-            "Record the normal/editor launch boundary and remaining manual integration.",
-            CreateDirectReadme());
+            "Document the automatic normal/editor launch boundary.",
+            CreateDirectReadme(),
+            reuseExisting: isResume,
+            knownPreviousText: CreateLegacyDirectReadme());
     }
 
     private void AddDedicatedHeadChanges(
         string projectRoot,
         InspectedDotnetProject startupProject,
         string safeName,
-        ICollection<OnboardingProposedChange> changes)
+        ICollection<OnboardingProposedChange> changes,
+        bool isResume)
     {
         var relativeProductionProject = NormalizeProjectPath(Path.GetRelativePath(
             Path.Combine(projectRoot, "SKinnyEditor"),
             startupProject.Path));
         var targetFramework = SelectDedicatedTargetFramework(startupProject.TargetFrameworks);
-        AddCreate(
+        AddGeneratedText(
             projectRoot,
             changes,
             Path.Combine("SKinnyEditor", $"{safeName}.SKinny.Editor.csproj"),
             "Create an editor-only executable without changing the production composition root.",
-            CreateDedicatedProject(targetFramework, relativeProductionProject, RuntimePackageVersion));
-        AddCreate(
+            CreateDedicatedProject(targetFramework, relativeProductionProject, RuntimePackageVersion),
+            reuseExisting: isResume);
+        AddGeneratedText(
             projectRoot,
             changes,
             Path.Combine("SKinnyEditor", "Program.cs"),
             "Create the dedicated editor runtime entry point and empty adapter.",
-            CreateAdapterSource(includeMain: true));
-        AddCreate(
+            CreateAdapterSource(includeMain: true),
+            reuseExisting: isResume);
+        AddGeneratedText(
             projectRoot,
             changes,
             Path.Combine("SKinnyEditor", "README.md"),
             "Document the generated boundary and remaining adapter work.",
-            CreateDedicatedReadme());
+            CreateDedicatedReadme(),
+            reuseExisting: isResume);
+    }
+
+    private void AddSdkFeedChanges(
+        ExistingProjectAnalysis analysis,
+        InspectedDotnetProject startupProject,
+        ICollection<OnboardingProposedChange> changes)
+    {
+        var packages = BundledSdkPackages.FindRequired(
+            RuntimePackageVersion,
+            _sdkPackageDirectory,
+            allowGlobalPackageCache: true);
+        var sdkDirectory = Path.Combine(analysis.ProjectRoot, ".skinny", "sdk");
+        foreach (var package in packages)
+        {
+            AddBinaryCreate(
+                analysis.ProjectRoot,
+                changes,
+                Path.Combine(".skinny", "sdk", Path.GetFileName(package)),
+                "Copy a matching SKinny SDK package into the project-local feed.",
+                File.ReadAllBytes(package));
+        }
+
+        var configPath = analysis.PackageConfigurationPaths
+            .Where(path => string.Equals(
+                               Path.GetFileName(path),
+                               "NuGet.config",
+                               StringComparison.OrdinalIgnoreCase)
+                           || string.Equals(
+                               Path.GetFileName(path),
+                               "nuget.config",
+                               StringComparison.OrdinalIgnoreCase))
+            .Where(path => ExistingStereoKitProjectAnalyzer.IsWithinRoot(
+                Path.GetDirectoryName(path)!,
+                startupProject.Path))
+            .OrderByDescending(path => Path.GetDirectoryName(path)!.Length)
+            .FirstOrDefault()
+            ?? Path.Combine(analysis.ProjectRoot, "NuGet.config");
+        AddNuGetConfigSource(analysis.ProjectRoot, configPath, sdkDirectory, changes);
+    }
+
+    private static void AddNuGetConfigSource(
+        string projectRoot,
+        string configPath,
+        string sdkDirectory,
+        ICollection<OnboardingProposedChange> changes)
+    {
+        var configDirectory = Path.GetDirectoryName(configPath)!;
+        var relativeSource = NormalizeProjectPath(Path.GetRelativePath(configDirectory, sdkDirectory));
+        if (!File.Exists(configPath))
+        {
+            AddCreate(
+                projectRoot,
+                changes,
+                Path.GetRelativePath(projectRoot, configPath),
+                "Configure the project-local SKinny SDK package source.",
+                $$"""
+                <?xml version="1.0" encoding="utf-8"?>
+                <configuration>
+                  <packageSources>
+                    <add key="skinny-project-sdk" value="{{relativeSource}}" />
+                    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+                  </packageSources>
+                </configuration>
+                """ + Environment.NewLine);
+            return;
+        }
+
+        var original = ReadUtf8Text(configPath);
+        var document = LoadSafeXml(original.Text, configPath);
+        var packageSources = document.Descendants()
+            .FirstOrDefault(element => element.Name.LocalName == "packageSources");
+        var existingLocalSource = packageSources?.Elements().FirstOrDefault(element =>
+            element.Name.LocalName == "add"
+            && ResolvesToDirectory(
+                element.Attribute("value")?.Value,
+                configDirectory,
+                sdkDirectory));
+        if (existingLocalSource is not null)
+        {
+            var existingKey = existingLocalSource.Attribute("key")?.Value;
+            if (string.IsNullOrWhiteSpace(existingKey))
+            {
+                throw new InvalidDataException(
+                    $"The project-local source in '{configPath}' has no package-source key.");
+            }
+
+            var mapped = EnsurePackageSourceMapping(
+                original.Text,
+                original.NewLine,
+                configPath,
+                existingKey);
+            if (!string.Equals(mapped, original.Text, StringComparison.Ordinal))
+            {
+                AddModify(
+                    projectRoot,
+                    changes,
+                    configPath,
+                    "Allow matching SKinny SDK packages through NuGet package-source mapping.",
+                    original,
+                    mapped);
+            }
+
+            return;
+        }
+
+        var existingKeys = document.Descendants()
+            .Where(element => element.Name.LocalName == "add")
+            .Select(element => element.Attribute("key")?.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var key = "skinny-project-sdk";
+        for (var suffix = 2; existingKeys.Contains(key); suffix++)
+        {
+            key = $"skinny-project-sdk-{suffix}";
+        }
+
+        string proposed;
+        if (packageSources is not null)
+        {
+            if (packageSources.IsEmpty)
+            {
+                var match = Regex.Match(
+                    original.Text,
+                    "<packageSources\\b(?<attributes>[^>]*)/\\s*>",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                if (!match.Success)
+                {
+                    throw new InvalidDataException(
+                        $"NuGet configuration '{configPath}' has an unsupported empty packageSources element.");
+                }
+
+                proposed = original.Text.Remove(match.Index, match.Length).Insert(
+                    match.Index,
+                    $"<packageSources{match.Groups["attributes"].Value}>{original.NewLine}" +
+                    $"    <add key=\"{SecurityElement.Escape(key)}\" value=\"{SecurityElement.Escape(relativeSource)}\" />{original.NewLine}" +
+                    "  </packageSources>");
+            }
+            else
+            {
+                var closeTag = $"</{packageSources.Name.LocalName}>";
+                var index = original.Text.LastIndexOf(closeTag, StringComparison.OrdinalIgnoreCase);
+                if (index < 0)
+                {
+                    throw new InvalidDataException($"NuGet configuration '{configPath}' has no packageSources closing element.");
+                }
+
+                var lineStart = original.Text.LastIndexOf('\n', Math.Max(0, index - 1));
+                lineStart = lineStart < 0 ? 0 : lineStart + 1;
+                var closeIndentation = original.Text[lineStart..index];
+                if (closeIndentation.Any(character => !char.IsWhiteSpace(character)))
+                {
+                    closeIndentation = "  ";
+                    lineStart = index;
+                }
+
+                proposed = original.Text.Insert(
+                    lineStart,
+                    $"{closeIndentation}  <add key=\"{SecurityElement.Escape(key)}\" value=\"{SecurityElement.Escape(relativeSource)}\" />{original.NewLine}");
+            }
+        }
+        else
+        {
+            var index = original.Text.LastIndexOf("</configuration>", StringComparison.OrdinalIgnoreCase);
+            if (index < 0)
+            {
+                var match = Regex.Match(
+                    original.Text,
+                    "<configuration\\b(?<attributes>[^>]*)/\\s*>",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                if (!match.Success)
+                {
+                    throw new InvalidDataException($"NuGet configuration '{configPath}' has no configuration closing element.");
+                }
+
+                proposed = original.Text.Remove(match.Index, match.Length).Insert(
+                    match.Index,
+                    $"<configuration{match.Groups["attributes"].Value}>{original.NewLine}" +
+                    $"  <packageSources>{original.NewLine}" +
+                    $"    <add key=\"{SecurityElement.Escape(key)}\" value=\"{SecurityElement.Escape(relativeSource)}\" />{original.NewLine}" +
+                    $"  </packageSources>{original.NewLine}" +
+                    "</configuration>");
+            }
+            else
+            {
+                proposed = original.Text.Insert(
+                    index,
+                    $"  <packageSources>{original.NewLine}" +
+                    $"    <add key=\"{SecurityElement.Escape(key)}\" value=\"{SecurityElement.Escape(relativeSource)}\" />{original.NewLine}" +
+                    $"  </packageSources>{original.NewLine}");
+            }
+        }
+
+        proposed = EnsurePackageSourceMapping(proposed, original.NewLine, configPath, key);
+        AddModify(
+            projectRoot,
+            changes,
+            configPath,
+            "Configure the project-local SKinny SDK package source.",
+            original,
+            proposed);
+    }
+
+    private static string EnsurePackageSourceMapping(
+        string text,
+        string newLine,
+        string configPath,
+        string sourceKey)
+    {
+        var document = LoadSafeXml(text, configPath);
+        var mapping = document.Descendants()
+            .FirstOrDefault(element => element.Name.LocalName == "packageSourceMapping");
+        if (mapping is null)
+        {
+            return text;
+        }
+
+        var mappedSource = mapping.Elements().FirstOrDefault(element =>
+            element.Name.LocalName == "packageSource"
+            && string.Equals(
+                element.Attribute("key")?.Value,
+                sourceKey,
+                StringComparison.OrdinalIgnoreCase));
+        if (mappedSource is not null)
+        {
+            var coversSdk = mappedSource.Elements().Any(element =>
+                element.Name.LocalName == "package"
+                && PackagePatternCoversSdk(element.Attribute("pattern")?.Value));
+            if (coversSdk)
+            {
+                return text;
+            }
+
+            throw new InvalidDataException(
+                $"NuGet package-source mapping in '{configPath}' already defines '{sourceKey}' without a pattern that covers SKinny.Editor.* packages.");
+        }
+
+        const string closeTag = "</packageSourceMapping>";
+        var index = text.LastIndexOf(closeTag, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+        {
+            throw new InvalidDataException(
+                $"NuGet configuration '{configPath}' has an unsupported packageSourceMapping element.");
+        }
+
+        var lineStart = text.LastIndexOf('\n', Math.Max(0, index - 1));
+        lineStart = lineStart < 0 ? 0 : lineStart + 1;
+        var closeIndentation = text[lineStart..index];
+        if (closeIndentation.Any(character => !char.IsWhiteSpace(character)))
+        {
+            closeIndentation = "  ";
+            lineStart = index;
+        }
+
+        return text.Insert(
+            lineStart,
+            $"{closeIndentation}  <packageSource key=\"{SecurityElement.Escape(sourceKey)}\">{newLine}" +
+            $"{closeIndentation}    <package pattern=\"SKinny.Editor.*\" />{newLine}" +
+            $"{closeIndentation}  </packageSource>{newLine}");
+    }
+
+    private static bool PackagePatternCoversSdk(string? pattern)
+    {
+        if (string.IsNullOrWhiteSpace(pattern))
+        {
+            return false;
+        }
+
+        var expression = "^" + Regex.Escape(pattern).Replace("\\*", ".*", StringComparison.Ordinal) + "$";
+        return BundledSdkPackages.RequiredPackageIds.All(packageId =>
+            Regex.IsMatch(
+                packageId,
+                expression,
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant));
+    }
+
+    private static XDocument LoadSafeXml(string text, string path)
+    {
+        var settings = new XmlReaderSettings
+        {
+            DtdProcessing = DtdProcessing.Prohibit,
+            XmlResolver = null,
+        };
+        using var input = new StringReader(text);
+        using var reader = XmlReader.Create(input, settings);
+        try
+        {
+            return XDocument.Load(reader, LoadOptions.PreserveWhitespace);
+        }
+        catch (XmlException exception)
+        {
+            throw new InvalidDataException($"NuGet configuration '{path}' is not well-formed XML.", exception);
+        }
+    }
+
+    private static bool ResolvesToDirectory(string? value, string configDirectory, string expectedDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(value)
+            || Uri.TryCreate(value, UriKind.Absolute, out var uri) && !uri.IsFile)
+        {
+            return false;
+        }
+
+        try
+        {
+            var resolved = Path.GetFullPath(Path.IsPathRooted(value)
+                ? value
+                : Path.Combine(configDirectory, value));
+            return string.Equals(
+                Path.TrimEndingDirectorySeparator(resolved),
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(expectedDirectory)),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
     }
 
     private void AddPackageReferenceChange(
@@ -388,6 +766,17 @@ public sealed class OnboardingProposalBuilder(string? runtimePackageVersion = nu
         """
         # SKinny Editor integration
 
+        SKinny added a guarded editor-launch route before normal application startup. The guard only
+        handles explicit SKinny Scene and Play launches; ordinary application launches are unchanged.
+
+        Optionally register explicitly authorable project components in `GeneratedProjectAdapter.Configure`.
+        Procedural runtime objects remain owned by the normal application and are not inferred by the editor.
+        """ + Environment.NewLine;
+
+    private static string CreateLegacyDirectReadme() =>
+        """
+        # SKinny Editor integration
+
         The normal application entry point has not been replaced. Before normal StereoKit startup,
         route explicit editor launches through the generated helper:
 
@@ -414,13 +803,12 @@ public sealed class OnboardingProposalBuilder(string? runtimePackageVersion = nu
         """ + Environment.NewLine;
 
     private static InspectedDotnetProject SelectStartupProject(ExistingProjectAnalysis analysis) =>
-        analysis.Projects.FirstOrDefault(project =>
-            project.ReferencesStereoKit && (project.OutputType is "Exe" or "WinExe"))
-        ?? analysis.Projects.FirstOrDefault(project => project.ReferencesStereoKit)
+        analysis.RecommendedStartupProject
         ?? throw new InvalidOperationException("The analysis has no StereoKit project to onboard.");
 
     private static string SelectDedicatedTargetFramework(IReadOnlyList<string> frameworks) =>
-        frameworks.FirstOrDefault(ExistingStereoKitProjectAnalyzer.IsEditorRuntimeCompatibleFramework)
+        frameworks.FirstOrDefault(framework =>
+            ExistingStereoKitProjectAnalyzer.IsEditorRuntimeCompatibleFramework(framework))
         ?? "net8.0";
 
     private static string InsertBeforeProjectEnd(string text, string fragment)
@@ -457,7 +845,78 @@ public sealed class OnboardingProposalBuilder(string? runtimePackageVersion = nu
             Hash(proposedBytes),
             null,
             proposedText,
+            proposedBytes,
             OnboardingTextDiff.Create(normalized, null, proposedText),
+            false));
+    }
+
+    private static void AddGeneratedText(
+        string projectRoot,
+        ICollection<OnboardingProposedChange> changes,
+        string relativePath,
+        string purpose,
+        string proposedText,
+        bool reuseExisting,
+        string? knownPreviousText = null)
+    {
+        var target = Path.GetFullPath(Path.Combine(projectRoot, NormalizeRelativePath(relativePath)));
+        if (!reuseExisting || !File.Exists(target))
+        {
+            AddCreate(projectRoot, changes, relativePath, purpose, proposedText);
+            return;
+        }
+
+        var original = ReadUtf8Text(target);
+        if (string.Equals(original.Text, proposedText, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (knownPreviousText is not null
+            && string.Equals(original.Text, knownPreviousText, StringComparison.Ordinal))
+        {
+            AddModify(projectRoot, changes, target, purpose, original, proposedText);
+        }
+    }
+
+    private static void AddBinaryCreate(
+        string projectRoot,
+        ICollection<OnboardingProposedChange> changes,
+        string relativePath,
+        string purpose,
+        byte[] proposedBytes)
+    {
+        var normalized = NormalizeRelativePath(relativePath);
+        var target = Path.GetFullPath(Path.Combine(projectRoot, normalized));
+        if (!ExistingStereoKitProjectAnalyzer.IsWithinRoot(projectRoot, target))
+        {
+            throw new InvalidDataException($"Proposed path escapes the selected project root: {relativePath}");
+        }
+
+        var proposedHash = Hash(proposedBytes);
+        if (File.Exists(target))
+        {
+            using var current = File.OpenRead(target);
+            var currentHash = Convert.ToHexString(SHA256.HashData(current));
+            if (string.Equals(currentHash, proposedHash, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            throw new InvalidOperationException(
+                $"The project-local SDK package already exists with different content: {normalized}");
+        }
+
+        changes.Add(new OnboardingProposedChange(
+            OnboardingChangeKind.Create,
+            normalized,
+            purpose,
+            null,
+            proposedHash,
+            null,
+            null,
+            proposedBytes,
+            $"Binary file: {normalized.Replace('\\', '/')} ({proposedBytes.Length:N0} bytes, SHA-256 {proposedHash})",
             false));
     }
 
@@ -483,6 +942,7 @@ public sealed class OnboardingProposalBuilder(string? runtimePackageVersion = nu
             Hash(EncodeUtf8(proposedText, original.HasBom)),
             original.Text,
             proposedText,
+            EncodeUtf8(proposedText, original.HasBom),
             OnboardingTextDiff.Create(relativePath, original.Text, proposedText),
             original.HasBom));
     }

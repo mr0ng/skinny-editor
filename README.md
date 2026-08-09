@@ -144,7 +144,9 @@ dotnet run --project src/StereoKitEditor.App -- --project samples/HelloEditor/He
 
 The first launch asks you to trust the workspace before MSBuild or project code runs. Review the exact project, working directory, command, and environment-variable names, then choose **Trust and Run** only for source you trust.
 
-You can also open a descriptor from **Open Project** or **Recent**, pass `--project <path>`, or set `SKINNY_PROJECT`. A portable build with no default project opens the project launcher.
+You can also open a descriptor from **Open Project**, choose **Recent Projects…**
+from that menu, pass `--project <path>`, or set `SKINNY_PROJECT`. A portable build
+with no default project opens the project launcher.
 
 ### Essential shortcuts
 
