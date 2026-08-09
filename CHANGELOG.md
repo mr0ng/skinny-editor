@@ -2,6 +2,13 @@
 
 All notable public changes to SKinny Editor are recorded here.
 
+## [Unreleased]
+
+### Added
+
+- A launcher-based New Project workflow that safely generates a complete StereoKit application from a bundled, versioned starter template.
+- Generated projects include fresh document IDs, a normal standalone entry point, editor adapter, initial scene, pinned local SDK packages, and first-open trust/build validation.
+
 ## [0.3.0-preview.1] - 2026-08-08
 
 First public preview.

@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="StereoKitEditor.App.NewProjectDialog"
+        Title="New StereoKit Project"
+        Width="600" Height="315"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        KeyDown="HandleKeyDown">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <StackPanel Margin="20,18" Spacing="14">
+      <StackPanel Spacing="5">
+        <TextBlock FontSize="18" FontWeight="SemiBold" Text="Create a StereoKit application" />
+        <TextBlock Classes="muted" TextWrapping="Wrap"
+                   Text="Creates a normal .NET project with a SKinny adapter and starter scene. The first open will ask for trust, then restore, build, and start Scene." />
+      </StackPanel>
+
+      <StackPanel Spacing="5">
+        <TextBlock FontWeight="SemiBold" Text="Project name" />
+        <TextBox x:Name="ProjectNameBox" Watermark="MyStereoKitApp" />
+      </StackPanel>
+
+      <StackPanel Spacing="5">
+        <TextBlock FontWeight="SemiBold" Text="Parent location" />
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBox x:Name="LocationBox" VerticalContentAlignment="Center" />
+          <Button Grid.Column="1" Margin="8,0,0,0" MinWidth="90" Click="HandleBrowse" Content="Browse…" />
+        </Grid>
+        <TextBlock Classes="muted" FontSize="10" Text="A new folder named after the project will be created here." />
+      </StackPanel>
+
+      <TextBlock x:Name="ValidationText" Foreground="#F0B55A" TextWrapping="Wrap" IsVisible="False" />
+    </StackPanel>
+
+    <Border Grid.Row="2" Padding="12" Background="#20242A" BorderBrush="#363D45" BorderThickness="0,1,0,0">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button MinWidth="90" Click="HandleCancel" Content="Cancel" />
+        <Button MinWidth="120" Classes="accent" Click="HandleCreate" Content="Create Project" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

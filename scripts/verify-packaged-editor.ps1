@@ -48,7 +48,12 @@ if (Test-Path -LiteralPath $extractedRoot) {
 New-Item -ItemType Directory -Force -Path $extractedRoot | Out-Null
 Expand-Archive -LiteralPath $archive -DestinationPath $extractedRoot
 
-foreach ($required in @($executable, $projectPath, (Join-Path $extractedRoot "LICENSE"), (Join-Path $extractedRoot "THIRD-PARTY-NOTICES.md"))) {
+foreach ($required in @(
+    $executable,
+    $projectPath,
+    (Join-Path $extractedRoot "Templates\StereoKitApp\1\__PROJECT_NAME__.csproj"),
+    (Join-Path $extractedRoot "LICENSE"),
+    (Join-Path $extractedRoot "THIRD-PARTY-NOTICES.md"))) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Required extracted-package input was not found: $required"
     }

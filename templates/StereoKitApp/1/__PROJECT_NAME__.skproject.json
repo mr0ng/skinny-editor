@@ -1,0 +1,24 @@
+{
+  "formatVersion": 2,
+  "projectId": "__PROJECT_ID__",
+  "name": "__PROJECT_NAME__",
+  "solution": "__PROJECT_NAME__.sln",
+  "assetsRoot": "Assets",
+  "scenesRoot": "Scenes",
+  "startupScene": "Scenes/Main.skscene.json",
+  "defaultSceneProfile": "editor-desktop",
+  "defaultPlayProfile": "editor-desktop",
+  "runtimeProfiles": [
+    {
+      "id": "editor-desktop",
+      "displayName": "Editor Desktop",
+      "project": "__PROJECT_NAME__.csproj",
+      "configuration": "Debug",
+      "targetFramework": "net8.0",
+      "workingDirectory": ".",
+      "arguments": [],
+      "environment": {},
+      "modes": ["Scene", "Play"]
+    }
+  ]
+}

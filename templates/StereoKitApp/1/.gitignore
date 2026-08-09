@@ -1,0 +1,6 @@
+bin/
+obj/
+.vs/
+.skinny/packages/
+.skinny/Cache/
+.skinny/Recovery/
