@@ -32,7 +32,8 @@ The ZIP includes `examples\HelloEditor\HelloEditor.skproject.json`. It restores 
 
 ## Open a project
 
-Use **Open Project** or **Recent** in the title bar, or launch directly:
+Use **Open Project > Open SKinny Editor Project…** in the title bar, choose
+**Recent Projects…** from the same menu, or launch directly:
 
 ```powershell
 SKinny.Editor.exe --project .\Example\Example.skproject.json
@@ -52,34 +53,43 @@ The New Project action requires a packaged editor that contains the bundled `sdk
 
 ## Import an existing StereoKit project
 
-From the no-project launcher, choose **Import StereoKit Project…** and select a
-`.sln` or `.csproj`. The first pass is safe inspection only: it reads solution,
-project, package, target-framework, source-shape, and existing descriptor
-metadata without evaluating MSBuild targets, restoring packages, loading an
-assembly, or running the application.
+Choose **Open Project > Import Existing StereoKit Project…** from either the
+no-project launcher or an open editor window, then select a `.sln` or `.csproj`.
+The first pass is safe inspection only: it reads solution, project, package,
+target-framework, source-shape, and existing descriptor metadata without
+evaluating MSBuild targets, restoring packages, loading an assembly, or running
+the application.
 
 The compatibility report separates content that can become authorable from
 procedural draw calls, dynamic objects, services, and UI that remain opaque.
-For supported projects, choose and review one of two integration shapes:
+When one startup project can be identified safely, SKinny selects an integration
+automatically:
 
-- **Main-project opt-in** previews a pinned runtime package reference, an
-  isolated adapter helper, descriptor, scene, and authoring roots. Connecting
-  the generated startup helper remains an explicit source review step.
-- **Dedicated editor head** creates a separate editor-only project that
-  references the selected production project without changing its composition
-  root or normal launch path.
+- **Main-project integration** is used when a conventional C# entry point can be
+  updated unambiguously. SKinny adds a guarded editor-launch route while leaving
+  ordinary application launches unchanged.
+- **Dedicated editor head** is selected when changing the production entry point
+  would be ambiguous. It creates a separate editor-only project without changing
+  the production composition root or normal launch path.
 
-The preview lists every create/modify action and its text diff. Applying uses a
-logged transaction under `.skinny/onboarding/<transaction-id>` with original
-and output hashes, backups for modified files, safe descriptor validation, and
-a persistent `report.json`. The dialog can roll the transaction back. Rollback
-removes only generated files that still match their reviewed output and restores
-modified files only if they have not changed since onboarding; later edits are
-preserved and reported as conflicts.
+The primary action is **Import & Open**. Detailed file and text diffs remain
+available through **Review changes**, but review is optional. Applying copies the
+matching SKinny SDK packages into `.skinny/sdk`, configures that project-local
+feed, and uses a logged transaction under `.skinny/onboarding/<transaction-id>`
+with original and output hashes, backups for modified files, safe descriptor
+validation, and a persistent `report.json`. Successful onboarding opens the
+generated descriptor immediately. An interrupted older onboarding transaction
+can be detected and completed without duplicating files or package references.
+If a solution contains multiple equally plausible StereoKit executables, select
+the intended `.csproj` directly; SKinny will not choose one arbitrarily.
+
+Rollback removes only generated files that still match their transaction output
+and restores modified files only if they have not changed since onboarding;
+later edits are preserved and reported as conflicts.
 
 Restore, build, adapter handshake, Scene, and Play still happen only after the
 generated descriptor is opened and workspace trust is granted. The persistent
-report calls out that boundary and any remaining manual adapter work.
+report calls out that boundary and optional project-specific adapter work.
 
 ## Add the runtime SDK to a StereoKit project
 
