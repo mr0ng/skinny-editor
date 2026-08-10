@@ -1,0 +1,5 @@
+# Require the repository owner to review all changes.
+* @mr0ng
+
+# Protect the ownership policy itself.
+/.github/CODEOWNERS @mr0ng
