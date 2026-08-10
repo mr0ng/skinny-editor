@@ -11,15 +11,18 @@ namespace StereoKitEditor.ProjectSystem;
 
 public sealed class OnboardingProposalBuilder(
     string? runtimePackageVersion = null,
-    string? sdkPackageDirectory = null)
+    string? sdkPackageDirectory = null,
+    string? testedStereoKitVersion = null)
 {
     private readonly string? _sdkPackageDirectory = sdkPackageDirectory;
+    private readonly string? _testedStereoKitVersion = testedStereoKitVersion;
 
     public string RuntimePackageVersion { get; } = runtimePackageVersion ?? GetRuntimePackageVersion();
 
     public OnboardingProposal Create(
         ExistingProjectAnalysis analysis,
-        OnboardingIntegrationShape integrationShape)
+        OnboardingIntegrationShape integrationShape,
+        bool alignStereoKitVersion = false)
     {
         ArgumentNullException.ThrowIfNull(analysis);
         if (analysis.Compatibility is ExistingProjectCompatibility.ReadyToOpen
@@ -31,6 +34,8 @@ public sealed class OnboardingProposalBuilder(
         }
 
         var startupProject = SelectStartupProject(analysis);
+        var stereoKitCompatibility = ResolveStereoKitCompatibility(analysis, startupProject);
+        ValidateStereoKitCompatibility(stereoKitCompatibility, alignStereoKitVersion);
         if (integrationShape == OnboardingIntegrationShape.DirectOptIn
             && !startupProject.TargetFrameworks.Any(
                 ExistingStereoKitProjectAnalyzer.IsEditorRuntimeCompatibleFramework))
@@ -75,6 +80,15 @@ public sealed class OnboardingProposalBuilder(
             AddDedicatedHeadChanges(analysis.ProjectRoot, startupProject, safeName, changes, isResume);
         }
 
+        if (stereoKitCompatibility?.Compatibility == StereoKitProjectCompatibility.UpgradeRequired)
+        {
+            AddStereoKitVersionAlignmentChange(
+                analysis.ProjectRoot,
+                startupProject,
+                stereoKitCompatibility,
+                changes);
+        }
+
         AddGeneratedText(
             analysis.ProjectRoot,
             changes,
@@ -97,7 +111,7 @@ public sealed class OnboardingProposalBuilder(
             string.Empty,
             reuseExisting: isResume);
 
-        var impact = integrationShape == OnboardingIntegrationShape.DirectOptIn
+        var impact = (integrationShape == OnboardingIntegrationShape.DirectOptIn
             ? new[]
             {
                 "Adds one pinned runtime package reference, a project-local SDK feed, and isolated onboarding source files.",
@@ -110,7 +124,13 @@ public sealed class OnboardingProposalBuilder(
                 "Creates a separate editor-only executable and project-local SDK feed.",
                 "Does not modify the selected production project or its composition root.",
                 "The normal command-line and IDE launch path remains unchanged.",
-            };
+            }).ToList();
+        if (stereoKitCompatibility?.Compatibility == StereoKitProjectCompatibility.UpgradeRequired)
+        {
+            impact.Insert(
+                0,
+                $"Updates StereoKit from {stereoKitCompatibility.ProjectVersion} to the tested {stereoKitCompatibility.TestedVersion}; NuGet downloads it during the trusted restore.");
+        }
         var manualWork = integrationShape == OnboardingIntegrationShape.DirectOptIn
             ? new[]
             {
@@ -130,7 +150,7 @@ public sealed class OnboardingProposalBuilder(
             analysis.Compatibility,
             analysis.Summary,
             analysis.Reasons,
-            analysis.Warnings,
+            AppendCompatibilityWarning(analysis.Warnings, stereoKitCompatibility),
             analysis.AuthorableContent,
             analysis.OpaqueContent,
             analysis.Prerequisites,
@@ -140,6 +160,304 @@ public sealed class OnboardingProposalBuilder(
             changes.OrderBy(change => change.RelativePath, StringComparer.OrdinalIgnoreCase).ToArray(),
             impact,
             manualWork);
+    }
+
+    public OnboardingProposal CreateStereoKitAlignment(ExistingProjectAnalysis analysis)
+    {
+        ArgumentNullException.ThrowIfNull(analysis);
+        if (analysis.Compatibility != ExistingProjectCompatibility.ReadyToOpen)
+        {
+            throw new InvalidOperationException(
+                "A compatibility-only proposal requires an existing valid SKinny project.");
+        }
+
+        var startupProject = SelectStartupProject(analysis);
+        var compatibility = ResolveStereoKitCompatibility(analysis, startupProject)
+                            ?? throw new InvalidOperationException(
+                                "StereoKit compatibility was not evaluated for this project.");
+        ValidateStereoKitCompatibility(compatibility, alignStereoKitVersion: true);
+        if (compatibility.Compatibility != StereoKitProjectCompatibility.UpgradeRequired)
+        {
+            throw new InvalidOperationException("This project does not require a StereoKit version upgrade.");
+        }
+
+        var descriptorPath = analysis.ValidDescriptorPaths.FirstOrDefault()
+                             ?? throw new InvalidOperationException(
+                                 "A compatibility-only proposal requires a valid project descriptor.");
+        var descriptorRelativePath = NormalizeRelativePath(
+            Path.GetRelativePath(analysis.ProjectRoot, descriptorPath));
+        var changes = new List<OnboardingProposedChange>();
+        AddStereoKitVersionAlignmentChange(
+            analysis.ProjectRoot,
+            startupProject,
+            compatibility,
+            changes);
+        var integrationShape = startupProject.HasEditorLaunchHook
+            ? OnboardingIntegrationShape.DirectOptIn
+            : OnboardingIntegrationShape.DedicatedEditorHead;
+        var proposalKey = $"{Path.GetFullPath(analysis.ProjectRoot)}|{startupProject.Path}|stereokit|{compatibility.TestedVersion}|{RuntimePackageVersion}";
+
+        return new(
+            CreateStableGuid($"proposal|{proposalKey}"),
+            analysis.ProjectRoot,
+            startupProject.Path,
+            analysis.Compatibility,
+            analysis.Summary,
+            analysis.Reasons,
+            AppendCompatibilityWarning(analysis.Warnings, compatibility),
+            analysis.AuthorableContent,
+            analysis.OpaqueContent,
+            analysis.Prerequisites,
+            integrationShape,
+            RuntimePackageVersion,
+            descriptorRelativePath,
+            changes,
+            [
+                $"Updates StereoKit from {compatibility.ProjectVersion} to the tested {compatibility.TestedVersion}.",
+                "Leaves the existing SKinny descriptor, scene, adapter, and application entry point unchanged.",
+                "NuGet downloads the selected StereoKit package during the trusted restore.",
+            ],
+            [
+                "Review any StereoKit API migration diagnostics produced by the project build.",
+                "Grant workspace trust before restore, build, Scene, or Play validation.",
+            ]);
+    }
+
+    private StereoKitProjectCompatibilityAssessment? ResolveStereoKitCompatibility(
+        ExistingProjectAnalysis analysis,
+        InspectedDotnetProject startupProject) =>
+        analysis.StereoKitCompatibility
+        ?? (string.IsNullOrWhiteSpace(_testedStereoKitVersion)
+            ? null
+            : new StereoKitProjectCompatibilityEvaluator(_testedStereoKitVersion).Evaluate(startupProject));
+
+    private static void ValidateStereoKitCompatibility(
+        StereoKitProjectCompatibilityAssessment? compatibility,
+        bool alignStereoKitVersion)
+    {
+        if (compatibility is null)
+        {
+            return;
+        }
+
+        if (compatibility.Compatibility == StereoKitProjectCompatibility.Unresolved)
+        {
+            throw new InvalidOperationException(compatibility.Message);
+        }
+
+        if (compatibility.Compatibility == StereoKitProjectCompatibility.UpgradeRequired
+            && (!alignStereoKitVersion || !compatibility.CanUpgradeAutomatically))
+        {
+            throw new InvalidOperationException(compatibility.Message);
+        }
+    }
+
+    private static IReadOnlyList<string> AppendCompatibilityWarning(
+        IReadOnlyList<string> warnings,
+        StereoKitProjectCompatibilityAssessment? compatibility) =>
+        compatibility is null || compatibility.Compatibility == StereoKitProjectCompatibility.Tested
+            ? warnings
+            : [.. warnings, compatibility.Message];
+
+    private static void AddStereoKitVersionAlignmentChange(
+        string projectRoot,
+        InspectedDotnetProject startupProject,
+        StereoKitProjectCompatibilityAssessment compatibility,
+        IList<OnboardingProposedChange> changes)
+    {
+        var source = startupProject.StereoKitVersionSource
+                     ?? throw new InvalidOperationException(
+                         "The effective StereoKit version declaration could not be changed automatically.");
+        if (!ExistingStereoKitProjectAnalyzer.IsWithinRoot(projectRoot, source.Path))
+        {
+            throw new InvalidDataException(
+                $"The StereoKit version declaration escapes the selected project root: {source.Path}");
+        }
+
+        var original = ReadUtf8Text(source.Path);
+        var relativePath = NormalizeRelativePath(Path.GetRelativePath(projectRoot, source.Path));
+        var pendingChanges = changes
+            .Select((change, index) => (Change: change, Index: index))
+            .Where(candidate => candidate.Change.Kind == OnboardingChangeKind.Modify
+                                && string.Equals(
+                                    candidate.Change.RelativePath,
+                                    relativePath,
+                                    StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        if (pendingChanges.Length > 1)
+        {
+            throw new InvalidOperationException(
+                $"Multiple onboarding changes target the StereoKit version file '{source.Path}'.");
+        }
+
+        var pendingChange = pendingChanges.SingleOrDefault();
+        var currentText = pendingChange.Change?.ProposedText ?? original.Text;
+        var proposed = source.Kind switch
+        {
+            PackageVersionSourceKind.MsBuildProperty when !string.IsNullOrWhiteSpace(source.PropertyName) =>
+                ReplaceMsBuildPropertyValue(
+                    currentText,
+                    source.PropertyName,
+                    source.DeclaredValue,
+                    compatibility.TestedVersion,
+                    source.Path),
+            PackageVersionSourceKind.ProjectPackageReference => ReplacePackageVersionValue(
+                currentText,
+                "PackageReference",
+                source.ValueName,
+                source.DeclaredValue,
+                compatibility.TestedVersion,
+                source.Path),
+            PackageVersionSourceKind.CentralPackageVersion => ReplacePackageVersionValue(
+                currentText,
+                "PackageVersion",
+                "Version",
+                source.DeclaredValue,
+                compatibility.TestedVersion,
+                source.Path),
+            _ => throw new InvalidOperationException(
+                "The effective StereoKit version declaration could not be changed automatically."),
+        };
+        if (pendingChange.Change is not null)
+        {
+            changes.RemoveAt(pendingChange.Index);
+        }
+
+        var purpose = $"Upgrade StereoKit to {compatibility.TestedVersion}, the version tested with this runtime bridge.";
+        AddModify(
+            projectRoot,
+            changes,
+            source.Path,
+            pendingChange.Change is null
+                ? purpose
+                : $"{pendingChange.Change.Purpose} {purpose}",
+            original,
+            proposed);
+    }
+
+    private static string ReplaceMsBuildPropertyValue(
+        string text,
+        string propertyName,
+        string expectedValue,
+        string replacementValue,
+        string path)
+    {
+        var pattern = new Regex(
+            $"(?<open><{Regex.Escape(propertyName)}\\b[^>]*>)(?<value>.*?)(?<close></{Regex.Escape(propertyName)}\\s*>)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+        return ReplaceSingleXmlValue(text, pattern, expectedValue, replacementValue, path);
+    }
+
+    private static string ReplacePackageVersionValue(
+        string text,
+        string elementName,
+        string valueName,
+        string expectedValue,
+        string replacementValue,
+        string path)
+    {
+        var elementPattern = new Regex(
+            $"<{elementName}\\b(?:(?!<{elementName}\\b).)*?(?:/>|</{elementName}\\s*>)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+        var candidates = elementPattern.Matches(text)
+            .Where(match => Regex.IsMatch(
+                match.Value,
+                "(?:Include|Update)\\s*=\\s*['\"]StereoKit['\"]",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            .ToArray();
+        if (candidates.Length != 1)
+        {
+            throw new InvalidOperationException(
+                $"Expected one editable StereoKit {elementName} in '{path}', but found {candidates.Length}.");
+        }
+
+        var candidate = candidates[0];
+        var attribute = Regex.Match(
+            candidate.Value,
+            $"(?<open>\\b{Regex.Escape(valueName)}\\s*=\\s*['\"])(?<value>[^'\"]+)(?<close>['\"])",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        Match valueMatch;
+        if (attribute.Success)
+        {
+            valueMatch = attribute;
+        }
+        else
+        {
+            valueMatch = Regex.Match(
+                candidate.Value,
+                $"(?<open><{Regex.Escape(valueName)}\\b[^>]*>)(?<value>.*?)(?<close></{Regex.Escape(valueName)}\\s*>)",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+        }
+
+        if (!valueMatch.Success)
+        {
+            throw new InvalidOperationException(
+                $"The StereoKit {elementName} in '{path}' has no editable version value.");
+        }
+
+        var valueGroup = valueMatch.Groups["value"];
+        var absoluteStart = candidate.Index + valueGroup.Index;
+        return ReplaceSingleValue(
+            text,
+            absoluteStart,
+            valueGroup.Length,
+            valueGroup.Value,
+            expectedValue,
+            replacementValue,
+            path);
+    }
+
+    private static string ReplaceSingleXmlValue(
+        string text,
+        Regex pattern,
+        string expectedValue,
+        string replacementValue,
+        string path)
+    {
+        var matches = pattern.Matches(text)
+            .Where(match => string.Equals(
+                match.Groups["value"].Value.Trim(),
+                expectedValue,
+                StringComparison.Ordinal))
+            .ToArray();
+        if (matches.Length != 1)
+        {
+            throw new InvalidOperationException(
+                $"Expected one version value '{expectedValue}' in '{path}', but found {matches.Length}.");
+        }
+
+        var group = matches[0].Groups["value"];
+        return ReplaceSingleValue(
+            text,
+            group.Index,
+            group.Length,
+            group.Value,
+            expectedValue,
+            replacementValue,
+            path);
+    }
+
+    private static string ReplaceSingleValue(
+        string text,
+        int start,
+        int length,
+        string currentValue,
+        string expectedValue,
+        string replacementValue,
+        string path)
+    {
+        var leading = currentValue.Length - currentValue.TrimStart().Length;
+        var trailing = currentValue.Length - currentValue.TrimEnd().Length;
+        if (!string.Equals(currentValue.Trim(), expectedValue, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"The StereoKit version changed while onboarding was being prepared: '{path}'.");
+        }
+
+        var replacement = currentValue[..leading]
+                          + replacementValue
+                          + currentValue[(currentValue.Length - trailing)..];
+        return text[..start] + replacement + text[(start + length)..];
     }
 
     private void AddDirectOptInChanges(
