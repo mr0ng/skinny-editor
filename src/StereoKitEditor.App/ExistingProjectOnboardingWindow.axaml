@@ -41,6 +41,15 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
+            <Border x:Name="StereoKitCompatibilityPanel" Padding="12" Classes="panel" IsVisible="False">
+              <StackPanel Spacing="6">
+                <TextBlock x:Name="StereoKitCompatibilityTitle" FontWeight="SemiBold" />
+                <TextBlock x:Name="StereoKitCompatibilityText" Classes="muted" TextWrapping="Wrap" />
+                <CheckBox x:Name="UpgradeStereoKitCheckBox" IsVisible="False"
+                          Checked="HandleStereoKitUpgradeChanged" Unchecked="HandleStereoKitUpgradeChanged" />
+              </StackPanel>
+            </Border>
+
             <TextBlock FontWeight="SemiBold" Text="Why" />
             <ItemsControl x:Name="ReasonsList">
               <ItemsControl.ItemTemplate>

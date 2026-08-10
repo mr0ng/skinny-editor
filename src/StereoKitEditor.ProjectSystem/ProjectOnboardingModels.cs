@@ -36,7 +36,8 @@ public sealed record ExistingProjectAnalysis(
     IReadOnlyList<string> AuthorableContent,
     IReadOnlyList<string> OpaqueContent,
     IReadOnlyList<string> Prerequisites,
-    IReadOnlyList<string> Warnings)
+    IReadOnlyList<string> Warnings,
+    StereoKitProjectCompatibilityAssessment? StereoKitCompatibility = null)
 {
     public bool IsReadOnly => true;
 
@@ -104,7 +105,8 @@ public sealed record InspectedDotnetProject(
     bool HasStereoKitInitialization,
     bool HasEditorLaunchHook,
     bool CanAddEditorLaunchHook,
-    string EditorLaunchHookAssessment)
+    string EditorLaunchHookAssessment,
+    PackageVersionSource? StereoKitVersionSource = null)
 {
     public bool ReferencesStereoKit => PackageReferences.Keys.Any(package =>
         string.Equals(package, "StereoKit", StringComparison.OrdinalIgnoreCase));
@@ -115,6 +117,37 @@ public sealed record InspectedDotnetProject(
     public bool ReferencesEditorRuntime => PackageReferences.Keys.Any(package =>
         string.Equals(package, "SKinny.Editor.Runtime", StringComparison.OrdinalIgnoreCase));
 }
+
+[JsonConverter(typeof(JsonStringEnumConverter<PackageVersionSourceKind>))]
+public enum PackageVersionSourceKind
+{
+    ProjectPackageReference,
+    CentralPackageVersion,
+    MsBuildProperty,
+}
+
+public sealed record PackageVersionSource(
+    string Path,
+    PackageVersionSourceKind Kind,
+    string DeclaredValue,
+    string? PropertyName = null,
+    string ValueName = "Version");
+
+[JsonConverter(typeof(JsonStringEnumConverter<StereoKitProjectCompatibility>))]
+public enum StereoKitProjectCompatibility
+{
+    Tested,
+    UpgradeRequired,
+    UntestedNewer,
+    Unresolved,
+}
+
+public sealed record StereoKitProjectCompatibilityAssessment(
+    StereoKitProjectCompatibility Compatibility,
+    string? ProjectVersion,
+    string TestedVersion,
+    bool CanUpgradeAutomatically,
+    string Message);
 
 [JsonConverter(typeof(JsonStringEnumConverter<OnboardingChangeKind>))]
 public enum OnboardingChangeKind

@@ -15,6 +15,8 @@ public static class StereoKitCompatibility
 {
     public static IReadOnlyList<string> TestedVersions { get; } = ["0.4.0-preview.3557"];
 
+    public static string PreferredVersion => TestedVersions[^1];
+
     public static bool IsTested(string runtimeVersion) => TestedVersions.Any(version =>
         string.Equals(runtimeVersion, version, StringComparison.OrdinalIgnoreCase)
         || runtimeVersion.StartsWith(version + " ", StringComparison.OrdinalIgnoreCase));

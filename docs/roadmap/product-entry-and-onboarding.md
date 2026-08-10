@@ -15,11 +15,11 @@ The phase does not weaken the existing project boundary: StereoKit projects rema
 | Starting the editor | Run the executable or pass `--project`; the no-project build shows a basic launcher | A dedicated Project Hub is the normal start surface |
 | Existing SKinny project | Browse to or pass an existing `.skproject.json`; recent projects are available in the editor | Open and manage existing projects from the Hub with validated recents |
 | New project | A launcher workflow generates the bundled, pinned starter template and opens it through first-run trust/build validation | Selectable templates, target/version choices, staged restore/build, and automatic first Scene/Play verification |
-| Existing StereoKit project | Safe analysis, compatibility report, reviewed direct/dedicated scaffolding, transaction report, safe validation, and rollback | Trust-gated restore/build/handshake/Scene/Play validation and broader guided remediation |
+| Existing StereoKit project | Safe analysis, compatibility and version report, reversible direct/dedicated scaffolding, transaction report, safe validation, and rollback | Trust-gated restore/build/handshake/Scene/Play validation and broader guided remediation |
 
 ## Product principles
 
-1. **Non-destructive by default.** Analysis does not write. No onboarding files are changed until the user reviews and confirms an explicit proposal.
+1. **Non-destructive by default.** Analysis does not write. No onboarding files are changed until the user confirms an explicit proposal; detailed preview remains available but optional.
 2. **Normal StereoKit use remains valid.** An onboarded project must retain its ordinary command-line/IDE build and launch path. Editor-specific code is isolated behind editor launch arguments or a dedicated head.
 3. **Honest compatibility.** The Hub reports what can be authored, what can only be run, and what remains opaque. It never promises to reconstruct arbitrary code-first draw calls into a hierarchy.
 4. **Transactional changes.** Planned writes have a manifest, preflight validation, recoverable backups where existing files change, and a tested rollback path.
@@ -107,7 +107,11 @@ The exact layout is template-versioned, but a complete project contains:
 Current implementation: the portable launcher exposes safe `.sln`/`.csproj`
 inspection, the compatibility/opaque-content report, selectable direct or
 dedicated-head proposals, per-file diff review, manifest-backed apply,
-persistent reports, safe descriptor validation, and hash-guarded rollback.
+persistent reports, safe descriptor validation, hash-guarded rollback, and
+StereoKit package preflight with reversible alignment to the preferred tested
+bridge version. Conventional project, `Directory.Build.props`, central package,
+and `VersionOverride` declarations are supported without running MSBuild;
+ambiguous version expressions are reported rather than changed.
 Restore/build/adapter/Scene/Play validation remains behind the existing
 workspace-trust prompt and is the next integration step for this workstream.
 

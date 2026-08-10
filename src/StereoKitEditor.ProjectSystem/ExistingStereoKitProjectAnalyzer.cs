@@ -13,6 +13,33 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
     private const int MaximumProjects = 512;
     private const int MaximumSourceFilesPerProject = 4096;
     private static readonly string[] ExcludedDirectoryNames = [".git", ".skinny", "bin", "obj", "packages"];
+    private readonly IReadOnlyList<string>? _testedStereoKitVersions;
+
+    public ExistingStereoKitProjectAnalyzer()
+    {
+    }
+
+    public ExistingStereoKitProjectAnalyzer(string testedStereoKitVersion)
+        : this([testedStereoKitVersion])
+    {
+    }
+
+    public ExistingStereoKitProjectAnalyzer(IEnumerable<string> testedStereoKitVersions)
+    {
+        ArgumentNullException.ThrowIfNull(testedStereoKitVersions);
+        _testedStereoKitVersions = testedStereoKitVersions
+            .Select(version => version?.Trim())
+            .Where(version => !string.IsNullOrWhiteSpace(version))
+            .Select(version => version!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (_testedStereoKitVersions.Count == 0)
+        {
+            throw new ArgumentException(
+                "At least one tested StereoKit version is required.",
+                nameof(testedStereoKitVersions));
+        }
+    }
 
     public ExistingProjectAnalysis Analyze(string selectedPath)
     {
@@ -83,7 +110,7 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
             descriptorPaths,
             validDescriptors,
             validDescriptorRuntimeProjects);
-        return new ExistingProjectAnalysis(
+        var analysis = new ExistingProjectAnalysis(
             canonicalSelection,
             projectRoot,
             solutionPath,
@@ -100,6 +127,13 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
             CreateOpaqueContent(projects),
             CreatePrerequisites(projects),
             warnings);
+        return _testedStereoKitVersions is null
+            ? analysis
+            : analysis with
+            {
+                StereoKitCompatibility = new StereoKitProjectCompatibilityEvaluator(_testedStereoKitVersions)
+                    .Evaluate(analysis.RecommendedStartupProject),
+            };
     }
 
     private static void ValidateExistingDescriptorFiles(EditorProjectDefinition definition)
@@ -215,15 +249,22 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
         var document = LoadXml(projectPath);
         var root = document.Root ?? throw new InvalidDataException("The project XML is empty.");
         var projectDirectory = Path.GetDirectoryName(projectPath)!;
+        var buildPropertiesFile = FindNearestFile(
+            projectDirectory,
+            projectRoot,
+            "Directory.Build.props");
         var centralPackageFile = FindNearestFile(
             projectDirectory,
             projectRoot,
             "Directory.Packages.props");
+        var propertyDefinitions = ReadPropertyDefinitions(
+            [buildPropertiesFile, centralPackageFile, projectPath],
+            warnings);
+        var properties = propertyDefinitions.ToDictionary(
+            pair => pair.Key,
+            pair => ExpandProperties(pair.Value.Value, propertyDefinitions),
+            StringComparer.OrdinalIgnoreCase);
         var centralVersions = ReadCentralPackageVersions(centralPackageFile, warnings);
-        var properties = root.Descendants()
-            .Where(element => element.Parent?.Name.LocalName == "PropertyGroup")
-            .GroupBy(element => element.Name.LocalName, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(group => group.Key, group => group.Last().Value.Trim(), StringComparer.OrdinalIgnoreCase);
 
         var targetFrameworks = Split(properties.GetValueOrDefault("TargetFrameworks"))
             .Concat(Split(properties.GetValueOrDefault("TargetFramework")))
@@ -234,6 +275,7 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         var packageReferences = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        PackageVersionSource? stereoKitVersionSource = null;
         foreach (var reference in root.Descendants().Where(element =>
                      element.Name.LocalName == "PackageReference"))
         {
@@ -243,15 +285,38 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
                 continue;
             }
 
-            var version = reference.Attribute("Version")?.Value
-                          ?? reference.Elements().FirstOrDefault(element =>
-                              element.Name.LocalName == "Version")?.Value;
-            if (string.IsNullOrWhiteSpace(version))
+            var versionOverride = reference.Attribute("VersionOverride")?.Value
+                                  ?? reference.Elements().FirstOrDefault(element =>
+                                      element.Name.LocalName == "VersionOverride")?.Value;
+            var versionExpression = versionOverride
+                                    ?? reference.Attribute("Version")?.Value
+                                    ?? reference.Elements().FirstOrDefault(element =>
+                                        element.Name.LocalName == "Version")?.Value;
+            var versionValueName = versionOverride is null ? "Version" : "VersionOverride";
+            PackageVersionDefinition? versionDefinition = null;
+            if (string.IsNullOrWhiteSpace(versionExpression))
             {
-                centralVersions.TryGetValue(name, out version);
+                centralVersions.TryGetValue(name, out versionDefinition);
+                versionExpression = versionDefinition?.Value;
+                versionValueName = "Version";
             }
 
-            packageReferences[name] = string.IsNullOrWhiteSpace(version) ? null : version.Trim();
+            var effectiveVersion = string.IsNullOrWhiteSpace(versionExpression)
+                ? null
+                : ExpandProperties(versionExpression.Trim(), propertyDefinitions);
+            packageReferences[name] = effectiveVersion;
+            if (string.Equals(name, "StereoKit", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(versionExpression))
+            {
+                stereoKitVersionSource = ResolvePackageVersionSource(
+                    versionDefinition?.Path ?? projectPath,
+                    versionDefinition is null
+                        ? PackageVersionSourceKind.ProjectPackageReference
+                        : PackageVersionSourceKind.CentralPackageVersion,
+                    versionExpression.Trim(),
+                    versionValueName,
+                    propertyDefinitions);
+            }
         }
 
         var projectReferences = root.Descendants()
@@ -280,7 +345,8 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
             sourceShape.HasStereoKitInitialization,
             sourceShape.HasEditorLaunchHook,
             sourceShape.CanAddEditorLaunchHook,
-            sourceShape.EditorLaunchHookAssessment);
+            sourceShape.EditorLaunchHookAssessment,
+            stereoKitVersionSource);
     }
 
     private static (
@@ -549,13 +615,13 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
         return prerequisites;
     }
 
-    private static IReadOnlyDictionary<string, string?> ReadCentralPackageVersions(
+    private static IReadOnlyDictionary<string, PackageVersionDefinition> ReadCentralPackageVersions(
         string? path,
         ICollection<string> warnings)
     {
         if (path is null)
         {
-            return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            return new Dictionary<string, PackageVersionDefinition>(StringComparer.OrdinalIgnoreCase);
         }
 
         try
@@ -566,17 +632,135 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
                 .Select(element => new
                 {
                     Name = element.Attribute("Include")?.Value ?? element.Attribute("Update")?.Value,
-                    Version = element.Attribute("Version")?.Value,
+                    Version = element.Attribute("Version")?.Value
+                              ?? element.Elements().FirstOrDefault(child =>
+                                  child.Name.LocalName == "Version")?.Value,
                 })
-                .Where(item => !string.IsNullOrWhiteSpace(item.Name))
+                .Where(item => !string.IsNullOrWhiteSpace(item.Name)
+                               && !string.IsNullOrWhiteSpace(item.Version))
                 .GroupBy(item => item.Name!, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(group => group.Key, group => group.Last().Version, StringComparer.OrdinalIgnoreCase);
+                .ToDictionary(
+                    group => group.Key,
+                    group => new PackageVersionDefinition(
+                        path,
+                        group.Last().Version!.Trim()),
+                    StringComparer.OrdinalIgnoreCase);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or XmlException)
         {
             warnings.Add($"Could not inspect central package versions in '{path}': {exception.Message}");
-            return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            return new Dictionary<string, PackageVersionDefinition>(StringComparer.OrdinalIgnoreCase);
         }
+    }
+
+    private static IReadOnlyDictionary<string, PropertyDefinition> ReadPropertyDefinitions(
+        IEnumerable<string?> paths,
+        ICollection<string> warnings)
+    {
+        var result = new Dictionary<string, PropertyDefinition>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in paths.Where(path => !string.IsNullOrWhiteSpace(path)).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var document = LoadXml(path!);
+                var root = document.Root;
+                if (root is null)
+                {
+                    continue;
+                }
+
+                foreach (var group in root.Elements().Where(element =>
+                             element.Name.LocalName == "PropertyGroup"
+                             && element.Attribute("Condition") is null))
+                {
+                    foreach (var property in group.Elements().Where(element =>
+                                 element.Attribute("Condition") is null))
+                    {
+                        result[property.Name.LocalName] = new(
+                            path!,
+                            property.Name.LocalName,
+                            property.Value.Trim());
+                    }
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or XmlException)
+            {
+                warnings.Add($"Could not inspect MSBuild properties in '{path}': {exception.Message}");
+            }
+        }
+
+        return result;
+    }
+
+    private static string ExpandProperties(
+        string value,
+        IReadOnlyDictionary<string, PropertyDefinition> properties,
+        ISet<string>? expansionStack = null)
+    {
+        if (string.IsNullOrWhiteSpace(value) || !value.Contains("$(", StringComparison.Ordinal))
+        {
+            return value.Trim();
+        }
+
+        expansionStack ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        return PropertyPattern().Replace(value, match =>
+        {
+            var name = match.Groups[1].Value;
+            if (!properties.TryGetValue(name, out var definition) || !expansionStack.Add(name))
+            {
+                return match.Value;
+            }
+
+            try
+            {
+                return ExpandProperties(definition.Value, properties, expansionStack);
+            }
+            finally
+            {
+                expansionStack.Remove(name);
+            }
+        }).Trim();
+    }
+
+    private static PackageVersionSource ResolvePackageVersionSource(
+        string path,
+        PackageVersionSourceKind kind,
+        string value,
+        string valueName,
+        IReadOnlyDictionary<string, PropertyDefinition> properties)
+    {
+        var currentValue = value;
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        string? sourcePropertyName = null;
+        while (TryReadSingleProperty(currentValue, out var propertyName)
+               && visited.Add(propertyName)
+               && properties.TryGetValue(propertyName, out var property))
+        {
+            path = property.Path;
+            kind = PackageVersionSourceKind.MsBuildProperty;
+            sourcePropertyName = propertyName;
+            currentValue = property.Value;
+        }
+
+        return new(
+            path,
+            kind,
+            currentValue,
+            sourcePropertyName,
+            valueName);
+    }
+
+    private static bool TryReadSingleProperty(string value, out string propertyName)
+    {
+        var match = PropertyPattern().Match(value.Trim());
+        if (match.Success && match.Length == value.Trim().Length)
+        {
+            propertyName = match.Groups[1].Value;
+            return true;
+        }
+
+        propertyName = string.Empty;
+        return false;
     }
 
     private static XDocument LoadXml(string path)
@@ -746,6 +930,13 @@ public sealed partial class ExistingStereoKitProjectAnalyzer
         string ProjectPath,
         bool HasGeneratedDirectAdapter);
 
+    private sealed record PropertyDefinition(string Path, string Name, string Value);
+
+    private sealed record PackageVersionDefinition(string Path, string Value);
+
     [GeneratedRegex("^Project\\(.*\\)\\s*=\\s*.*?,\\s*\"([^\"]+\\.csproj)\"", RegexOptions.IgnoreCase)]
     private static partial Regex SolutionProjectPattern();
+
+    [GeneratedRegex("\\$\\(([A-Za-z_][A-Za-z0-9_.-]*)\\)", RegexOptions.CultureInvariant)]
+    private static partial Regex PropertyPattern();
 }

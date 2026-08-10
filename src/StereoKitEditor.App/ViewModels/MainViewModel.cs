@@ -1165,7 +1165,17 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         SceneHostStatus = $"Building {Path.GetFileName(_sceneRuntimeProject.ProjectPath)}…";
         NotifyCommandStates();
-        var runtimeAssemblyPath = await BuildRuntimeProjectAsync(_sceneRuntimeProject, force: true);
+        DotnetBuildResult runtimeAssemblyPath;
+        try
+        {
+            runtimeAssemblyPath = await BuildRuntimeProjectAsync(_sceneRuntimeProject, force: true);
+        }
+        catch
+        {
+            SceneHostStatus = "Scene build failed · open Console for details";
+            throw;
+        }
+
         _sceneBuild = runtimeAssemblyPath;
         SceneHostStatus = "Starting embedded Scene host…";
         await _sceneHost.StartAsync(
@@ -1187,8 +1197,19 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     private async Task StartPlayAsync()
     {
+        PlayHostStatus = $"Building {Path.GetFileName(_playRuntimeProject.ProjectPath)}…";
+        DotnetBuildResult runtimeAssemblyPath;
+        try
+        {
+            runtimeAssemblyPath = await BuildRuntimeProjectAsync(_playRuntimeProject, force: false);
+        }
+        catch
+        {
+            PlayHostStatus = "Play build failed · open Console for details";
+            throw;
+        }
+
         PlayHostStatus = "Starting isolated Play session…";
-        var runtimeAssemblyPath = await BuildRuntimeProjectAsync(_playRuntimeProject, force: false);
         var playSnapshot = SceneSerializer.Clone(_session.Document);
         await _playHost.StartAsync(
             runtimeAssemblyPath.TargetPath,

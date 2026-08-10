@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using StereoKitEditor.ProjectSystem;
+using StereoKitEditor.Protocol;
 
 namespace StereoKitEditor.App.Services;
 
@@ -34,7 +35,8 @@ public static class ExistingProjectImportFlow
         ExistingProjectAnalysis analysis;
         try
         {
-            analysis = await Task.Run(() => new ExistingStereoKitProjectAnalyzer().Analyze(path));
+            analysis = await Task.Run(() =>
+                new ExistingStereoKitProjectAnalyzer(StereoKitCompatibility.TestedVersions).Analyze(path));
         }
         finally
         {

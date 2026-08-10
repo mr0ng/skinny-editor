@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using StereoKitEditor.ProjectSystem;
+using StereoKitEditor.Protocol;
 
 namespace StereoKitEditor.App;
 
@@ -12,8 +13,9 @@ public sealed record ExistingProjectOnboardingResult(
 public partial class ExistingProjectOnboardingWindow : Window
 {
     private readonly ExistingProjectAnalysis _analysis;
-    private readonly OnboardingProposalBuilder _proposalBuilder = new();
+    private readonly OnboardingProposalBuilder _proposalBuilder;
     private readonly OnboardingTransactionService _transactions = new();
+    private readonly StereoKitProjectCompatibilityAssessment? _stereoKitCompatibility;
     private OnboardingProposal? _proposal;
 
     public ExistingProjectOnboardingWindow()
@@ -24,7 +26,12 @@ public partial class ExistingProjectOnboardingWindow : Window
     public ExistingProjectOnboardingWindow(ExistingProjectAnalysis analysis)
     {
         InitializeComponent();
-        _analysis = analysis;
+        _stereoKitCompatibility = analysis.StereoKitCompatibility
+                                  ?? new StereoKitProjectCompatibilityEvaluator(
+                                          StereoKitCompatibility.TestedVersions)
+                                      .Evaluate(analysis.RecommendedStartupProject);
+        _analysis = analysis with { StereoKitCompatibility = _stereoKitCompatibility };
+        _proposalBuilder = new(testedStereoKitVersion: StereoKitCompatibility.PreferredVersion);
         PopulateReport();
     }
 
@@ -38,6 +45,7 @@ public partial class ExistingProjectOnboardingWindow : Window
             project.Name,
             $"{string.Join(", ", project.TargetFrameworks.DefaultIfEmpty("target unresolved"))} · {project.OutputType} · " +
             $"StereoKit {project.StereoKitVersion ?? "not directly referenced"} · {project.Path}"));
+        PopulateStereoKitCompatibility();
         ReasonsList.ItemsSource = Lines(_analysis.Reasons);
         AuthorableList.ItemsSource = Lines(_analysis.AuthorableContent);
         OpaqueList.ItemsSource = Lines(_analysis.OpaqueContent);
@@ -53,17 +61,33 @@ public partial class ExistingProjectOnboardingWindow : Window
         IntegrationChoiceBox.ItemsSource = choices;
         IntegrationChoiceBox.SelectedItem = choices.FirstOrDefault(choice =>
             choice.Shape == _analysis.RecommendedIntegration) ?? choices.FirstOrDefault();
-        ReviewButton.IsVisible = choices.Length > 0;
 
         if (_analysis.Compatibility == ExistingProjectCompatibility.ReadyToOpen)
         {
             var descriptor = _analysis.ValidDescriptorPaths.FirstOrDefault();
             if (descriptor is not null)
             {
-                ApplyButton.Content = "Open existing project";
-                ApplyButton.IsEnabled = true;
-                ApplyButton.Tag = descriptor;
-                StatusText.Text = "No files will be changed.";
+                if (_stereoKitCompatibility?.Compatibility
+                    == StereoKitProjectCompatibility.UpgradeRequired)
+                {
+                    PrepareProposal();
+                }
+                else if (_stereoKitCompatibility?.Compatibility
+                         == StereoKitProjectCompatibility.Unresolved)
+                {
+                    ApplyButton.IsEnabled = false;
+                    StatusText.Text = _stereoKitCompatibility.Message;
+                }
+                else
+                {
+                    ApplyButton.Content = "Open existing project";
+                    ApplyButton.IsEnabled = true;
+                    ApplyButton.Tag = descriptor;
+                    StatusText.Text = _stereoKitCompatibility?.Compatibility
+                                      == StereoKitProjectCompatibility.UntestedNewer
+                        ? "No files will be changed. Running this newer StereoKit version requires the explicit experimental override."
+                        : "No files will be changed.";
+                }
             }
         }
         else if (choices.Length == 0)
@@ -86,6 +110,34 @@ public partial class ExistingProjectOnboardingWindow : Window
         PrepareProposal();
     }
 
+    private void HandleStereoKitUpgradeChanged(object? sender, RoutedEventArgs args) => PrepareProposal();
+
+    private void PopulateStereoKitCompatibility()
+    {
+        if (_stereoKitCompatibility is null)
+        {
+            return;
+        }
+
+        StereoKitCompatibilityPanel.IsVisible = true;
+        StereoKitCompatibilityTitle.Text = _stereoKitCompatibility.Compatibility switch
+        {
+            StereoKitProjectCompatibility.Tested => "StereoKit compatibility · Tested",
+            StereoKitProjectCompatibility.UpgradeRequired => "StereoKit compatibility · Upgrade required",
+            StereoKitProjectCompatibility.UntestedNewer => "StereoKit compatibility · Newer and untested",
+            _ => "StereoKit compatibility · Version unresolved",
+        };
+        StereoKitCompatibilityText.Text = _stereoKitCompatibility.Message;
+        if (_stereoKitCompatibility.Compatibility == StereoKitProjectCompatibility.UpgradeRequired
+            && _stereoKitCompatibility.CanUpgradeAutomatically)
+        {
+            UpgradeStereoKitCheckBox.IsVisible = true;
+            UpgradeStereoKitCheckBox.Content =
+                $"Upgrade StereoKit to {_stereoKitCompatibility.TestedVersion} (recommended and reversible)";
+            UpgradeStereoKitCheckBox.IsChecked = true;
+        }
+    }
+
     private void PrepareProposal()
     {
         _proposal = null;
@@ -93,9 +145,47 @@ public partial class ExistingProjectOnboardingWindow : Window
         DiffText.Text = string.Empty;
         ApplyButton.Tag = null;
         ApplyButton.IsEnabled = false;
+        ReviewButton.IsVisible = false;
         ApplyButton.Content = _analysis.Compatibility == ExistingProjectCompatibility.IncompleteOnboarding
             ? "Finish setup & open"
             : "Import & Open";
+        if (_stereoKitCompatibility?.Compatibility == StereoKitProjectCompatibility.Unresolved)
+        {
+            StatusText.Text = _stereoKitCompatibility.Message;
+            return;
+        }
+
+        if (_stereoKitCompatibility?.Compatibility == StereoKitProjectCompatibility.UpgradeRequired
+            && !_stereoKitCompatibility.CanUpgradeAutomatically)
+        {
+            StatusText.Text = _stereoKitCompatibility.Message;
+            return;
+        }
+
+        if (_stereoKitCompatibility?.Compatibility == StereoKitProjectCompatibility.UpgradeRequired
+            && UpgradeStereoKitCheckBox.IsChecked != true)
+        {
+            StatusText.Text = "The bundled runtime cannot restore against this older StereoKit version. Select the upgrade to continue.";
+            return;
+        }
+
+        if (_analysis.Compatibility == ExistingProjectCompatibility.ReadyToOpen)
+        {
+            try
+            {
+                BindProposal(
+                    _proposalBuilder.CreateStereoKitAlignment(_analysis),
+                    "Upgrade & Open");
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+                                               or InvalidDataException or InvalidOperationException)
+            {
+                StatusText.Text = exception.Message;
+            }
+
+            return;
+        }
+
         if (IntegrationChoiceBox.SelectedItem is not IntegrationChoice choice)
         {
             return;
@@ -103,16 +193,13 @@ public partial class ExistingProjectOnboardingWindow : Window
 
         try
         {
-            _proposal = _proposalBuilder.Create(_analysis, choice.Shape);
-            var changes = _proposal.Changes.Select(change => new ChangeLine(
-                change.Kind.ToString().ToUpperInvariant(),
-                change.RelativePath,
-                change.Purpose,
-                change)).ToArray();
-            ChangesList.ItemsSource = changes;
-            ChangesList.SelectedItem = changes.FirstOrDefault();
-            ApplyButton.IsEnabled = changes.Length > 0;
-            StatusText.Text = $"Ready to apply {changes.Length} reversible change{(changes.Length == 1 ? string.Empty : "s")}. Review is optional; no build or project code will run.";
+            BindProposal(
+                _proposalBuilder.Create(
+                    _analysis,
+                    choice.Shape,
+                    alignStereoKitVersion: _stereoKitCompatibility?.Compatibility
+                                               == StereoKitProjectCompatibility.UpgradeRequired),
+                ApplyButton.Content?.ToString() ?? "Import & Open");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
                                            or InvalidDataException or InvalidOperationException)
@@ -121,6 +208,22 @@ public partial class ExistingProjectOnboardingWindow : Window
             ApplyButton.IsEnabled = false;
             StatusText.Text = exception.Message;
         }
+    }
+
+    private void BindProposal(OnboardingProposal proposal, string buttonText)
+    {
+        _proposal = proposal;
+        var changes = proposal.Changes.Select(change => new ChangeLine(
+            change.Kind.ToString().ToUpperInvariant(),
+            change.RelativePath,
+            change.Purpose,
+            change)).ToArray();
+        ChangesList.ItemsSource = changes;
+        ChangesList.SelectedItem = changes.FirstOrDefault();
+        ApplyButton.Content = buttonText;
+        ApplyButton.IsEnabled = changes.Length > 0;
+        ReviewButton.IsVisible = changes.Length > 0;
+        StatusText.Text = $"Ready to apply {changes.Length} reversible change{(changes.Length == 1 ? string.Empty : "s")}. Review is optional; restore and project code run only after workspace trust.";
     }
 
     private void HandleReview(object? sender, RoutedEventArgs args) => OnboardingTabs.SelectedIndex = 1;

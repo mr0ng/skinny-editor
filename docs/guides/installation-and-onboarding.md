@@ -72,6 +72,18 @@ automatically:
   would be ambiguous. It creates a separate editor-only project without changing
   the production composition root or normal launch path.
 
+The same read-only pass resolves conventional unconditional version properties
+from the project, the nearest `Directory.Build.props`, and central package
+management. A project on an exact runtime-tested StereoKit version proceeds
+normally. An older version gets a selected-by-default, reversible upgrade to the
+preferred tested version; the project file or shared version property is changed
+in the same transaction, and NuGet downloads that package only during restore
+after workspace trust. A newer version can be imported with an untested-version
+warning and still requires the explicit experimental runtime override. Conditional,
+floating, imported, or otherwise unresolved version expressions are reported and
+block automatic changes instead of guessing. An already-imported SKinny project
+can use **Upgrade & Open** to apply only the dependency alignment.
+
 The primary action is **Import & Open**. Detailed file and text diffs remain
 available through **Review changes**, but review is optional. Applying copies the
 matching SKinny SDK packages into `.skinny/sdk`, configures that project-local

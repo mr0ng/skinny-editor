@@ -27,6 +27,336 @@ public sealed class ProjectOnboardingTests
     }
 
     [Fact]
+    public async Task Compatibility_ResolvesRepositoryPropertiesAndUpgradesOlderStereoKitReversibly()
+    {
+        const string testedVersion = "0.4.0-preview.3557";
+        using var fixture = new OnboardingFixture();
+        File.WriteAllText(
+            fixture.ProjectPath,
+            File.ReadAllText(fixture.ProjectPath)
+                .Replace("net8.0", "net$(DotNetVersion)", StringComparison.Ordinal)
+                .Replace(testedVersion, "$(StereoKitVersion)", StringComparison.Ordinal));
+        var propertiesPath = Path.Combine(fixture.Root, "Directory.Build.props");
+        File.WriteAllText(
+            propertiesPath,
+            """
+            <Project>
+              <PropertyGroup>
+                <DotNetVersion>10.0</DotNetVersion>
+                <StereoKitVersion>0.4.0-preview.2897</StereoKitVersion>
+              </PropertyGroup>
+            </Project>
+            """ + Environment.NewLine);
+        var analyzer = new ExistingStereoKitProjectAnalyzer(testedVersion);
+
+        var analysis = analyzer.Analyze(fixture.ProjectPath);
+
+        var project = Assert.Single(analysis.Projects);
+        Assert.Equal(["net10.0"], project.TargetFrameworks);
+        Assert.Equal("0.4.0-preview.2897", project.StereoKitVersion);
+        Assert.Equal(propertiesPath, project.StereoKitVersionSource?.Path);
+        Assert.Equal(PackageVersionSourceKind.MsBuildProperty, project.StereoKitVersionSource?.Kind);
+        Assert.Equal("StereoKitVersion", project.StereoKitVersionSource?.PropertyName);
+        var compatibility = Assert.IsType<StereoKitProjectCompatibilityAssessment>(
+            analysis.StereoKitCompatibility);
+        Assert.Equal(StereoKitProjectCompatibility.UpgradeRequired, compatibility.Compatibility);
+        Assert.True(compatibility.CanUpgradeAutomatically);
+
+        var builder = fixture.CreateBuilder(testedVersion);
+        Assert.Throws<InvalidOperationException>(() => builder.Create(
+            analysis,
+            OnboardingIntegrationShape.DirectOptIn));
+        var proposal = builder.Create(
+            analysis,
+            OnboardingIntegrationShape.DirectOptIn,
+            alignStereoKitVersion: true);
+        var versionChange = Assert.Single(proposal.Changes, change => string.Equals(
+            change.RelativePath,
+            "Directory.Build.props",
+            StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            "<StereoKitVersion>0.4.0-preview.3557</StereoKitVersion>",
+            versionChange.ProposedText,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "<DotNetVersion>10.0</DotNetVersion>",
+            versionChange.ProposedText,
+            StringComparison.Ordinal);
+
+        var transactions = new OnboardingTransactionService();
+        var applied = await transactions.ApplyAsync(proposal, TestContext.Current.CancellationToken);
+        Assert.Equal(
+            StereoKitProjectCompatibility.Tested,
+            analyzer.Analyze(fixture.ProjectPath).StereoKitCompatibility?.Compatibility);
+
+        var rollback = await transactions.RollbackAsync(
+            applied.ManifestPath,
+            TestContext.Current.CancellationToken);
+        Assert.Equal(OnboardingTransactionStatus.RolledBack, rollback.Status);
+        Assert.Contains(
+            "<StereoKitVersion>0.4.0-preview.2897</StereoKitVersion>",
+            File.ReadAllText(propertiesPath),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Compatibility_AllowsNewerStereoKitAsExplicitlyUntested()
+    {
+        const string testedVersion = "0.4.0-preview.3557";
+        using var fixture = new OnboardingFixture();
+        File.WriteAllText(
+            fixture.ProjectPath,
+            File.ReadAllText(fixture.ProjectPath).Replace(
+                testedVersion,
+                "0.4.0-preview.4000",
+                StringComparison.Ordinal));
+        var analysis = new ExistingStereoKitProjectAnalyzer(testedVersion).Analyze(fixture.ProjectPath);
+
+        Assert.Equal(
+            StereoKitProjectCompatibility.UntestedNewer,
+            analysis.StereoKitCompatibility?.Compatibility);
+        var proposal = fixture.CreateBuilder(testedVersion).Create(
+            analysis,
+            OnboardingIntegrationShape.DirectOptIn);
+        Assert.Contains(
+            proposal.AnalysisWarnings,
+            warning => warning.Contains("newer", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(proposal.Changes, change =>
+            change.Purpose.StartsWith("Upgrade StereoKit", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Compatibility_AcceptsAnyRuntimeTestedStereoKitVersion()
+    {
+        using var fixture = new OnboardingFixture();
+        File.WriteAllText(
+            fixture.ProjectPath,
+            File.ReadAllText(fixture.ProjectPath).Replace(
+                "0.4.0-preview.3557",
+                "0.4.0-preview.3400",
+                StringComparison.Ordinal));
+
+        var analysis = new ExistingStereoKitProjectAnalyzer(
+                ["0.4.0-preview.3400", "0.4.0-preview.3557"])
+            .Analyze(fixture.ProjectPath);
+
+        Assert.Equal(
+            StereoKitProjectCompatibility.Tested,
+            analysis.StereoKitCompatibility?.Compatibility);
+    }
+
+    [Fact]
+    public void Compatibility_BlocksSemanticallyEquivalentButUntestedVersionText()
+    {
+        const string testedVersion = "0.4.0-preview.3557";
+        using var fixture = new OnboardingFixture();
+        File.WriteAllText(
+            fixture.ProjectPath,
+            File.ReadAllText(fixture.ProjectPath).Replace(
+                testedVersion,
+                testedVersion + "+local",
+                StringComparison.Ordinal));
+
+        var analysis = new ExistingStereoKitProjectAnalyzer(testedVersion).Analyze(fixture.ProjectPath);
+
+        Assert.Equal(
+            StereoKitProjectCompatibility.Unresolved,
+            analysis.StereoKitCompatibility?.Compatibility);
+        Assert.Contains(
+            "not an exact",
+            analysis.StereoKitCompatibility?.Message,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Compatibility_BlocksAutomaticImportWhenVersionCannotBeResolved()
+    {
+        const string testedVersion = "0.4.0-preview.3557";
+        using var fixture = new OnboardingFixture();
+        File.WriteAllText(
+            fixture.ProjectPath,
+            File.ReadAllText(fixture.ProjectPath).Replace(
+                testedVersion,
+                "$(MissingStereoKitVersion)",
+                StringComparison.Ordinal));
+        var analysis = new ExistingStereoKitProjectAnalyzer(testedVersion).Analyze(fixture.ProjectPath);
+
+        Assert.Equal(
+            StereoKitProjectCompatibility.Unresolved,
+            analysis.StereoKitCompatibility?.Compatibility);
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            fixture.CreateBuilder(testedVersion).Create(
+                analysis,
+                OnboardingIntegrationShape.DirectOptIn));
+        Assert.Contains("could not", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Compatibility_UpgradesAnAlreadyImportedProjectWithoutRescaffolding()
+    {
+        const string testedVersion = "0.4.0-preview.3557";
+        using var fixture = new OnboardingFixture();
+        var analyzer = new ExistingStereoKitProjectAnalyzer(testedVersion);
+        var builder = fixture.CreateBuilder(testedVersion);
+        var onboarding = builder.Create(
+            analyzer.Analyze(fixture.ProjectPath),
+            OnboardingIntegrationShape.DirectOptIn);
+        var transactions = new OnboardingTransactionService();
+        _ = await transactions.ApplyAsync(onboarding, TestContext.Current.CancellationToken);
+        File.WriteAllText(
+            fixture.ProjectPath,
+            File.ReadAllText(fixture.ProjectPath).Replace(
+                testedVersion,
+                "0.4.0-preview.2897",
+                StringComparison.Ordinal));
+
+        var existing = analyzer.Analyze(fixture.Root);
+
+        Assert.Equal(ExistingProjectCompatibility.ReadyToOpen, existing.Compatibility);
+        Assert.Equal(
+            StereoKitProjectCompatibility.UpgradeRequired,
+            existing.StereoKitCompatibility?.Compatibility);
+        var alignment = builder.CreateStereoKitAlignment(existing);
+        var change = Assert.Single(alignment.Changes);
+        Assert.Equal("Fixture.csproj", change.RelativePath);
+        Assert.DoesNotContain(alignment.Changes, candidate => candidate.Kind == OnboardingChangeKind.Create);
+
+        _ = await transactions.ApplyAsync(alignment, TestContext.Current.CancellationToken);
+        Assert.Equal(
+            StereoKitProjectCompatibility.Tested,
+            analyzer.Analyze(fixture.Root).StereoKitCompatibility?.Compatibility);
+    }
+
+    [Fact]
+    public void Compatibility_CombinesDirectPackageUpgradeWithRuntimeReferenceChange()
+    {
+        const string testedVersion = "0.4.0-preview.3557";
+        using var fixture = new OnboardingFixture();
+        File.WriteAllText(
+            fixture.ProjectPath,
+            File.ReadAllText(fixture.ProjectPath).Replace(
+                testedVersion,
+                "0.4.0-preview.2897",
+                StringComparison.Ordinal));
+        var analysis = new ExistingStereoKitProjectAnalyzer(testedVersion).Analyze(fixture.ProjectPath);
+
+        var proposal = fixture.CreateBuilder(testedVersion).Create(
+            analysis,
+            OnboardingIntegrationShape.DirectOptIn,
+            alignStereoKitVersion: true);
+
+        var projectChange = Assert.Single(proposal.Changes, change => string.Equals(
+            change.RelativePath,
+            "Fixture.csproj",
+            StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            $"PackageReference Include=\"StereoKit\" Version=\"{testedVersion}\"",
+            projectChange.ProposedText,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "PackageReference Include=\"SKinny.Editor.Runtime\" Version=\"0.3.0-preview.1\"",
+            projectChange.ProposedText,
+            StringComparison.Ordinal);
+        Assert.Equal(
+            proposal.Changes.Count,
+            proposal.Changes.Select(change => change.RelativePath).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+    }
+
+    [Fact]
+    public void Compatibility_CombinesCentralPackageUpgradeWithRuntimeVersionChange()
+    {
+        const string testedVersion = "0.4.0-preview.3557";
+        using var fixture = new OnboardingFixture();
+        File.WriteAllText(
+            fixture.ProjectPath,
+            File.ReadAllText(fixture.ProjectPath).Replace(
+                $" Version=\"{testedVersion}\"",
+                string.Empty,
+                StringComparison.Ordinal));
+        var centralPath = Path.Combine(fixture.Root, "Directory.Packages.props");
+        File.WriteAllText(
+            centralPath,
+            """
+            <Project>
+              <PropertyGroup>
+                <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+              </PropertyGroup>
+              <ItemGroup>
+                <PackageVersion Include="StereoKit">
+                  <Version>0.4.0-preview.2897</Version>
+                </PackageVersion>
+              </ItemGroup>
+            </Project>
+            """ + Environment.NewLine);
+        var analysis = new ExistingStereoKitProjectAnalyzer(testedVersion).Analyze(fixture.ProjectPath);
+
+        var proposal = fixture.CreateBuilder(testedVersion).Create(
+            analysis,
+            OnboardingIntegrationShape.DirectOptIn,
+            alignStereoKitVersion: true);
+
+        var centralChange = Assert.Single(proposal.Changes, change => string.Equals(
+            change.RelativePath,
+            "Directory.Packages.props",
+            StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            $"<Version>{testedVersion}</Version>",
+            centralChange.ProposedText,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "PackageVersion Include=\"SKinny.Editor.Runtime\" Version=\"0.3.0-preview.1\"",
+            centralChange.ProposedText,
+            StringComparison.Ordinal);
+        Assert.Equal(
+            proposal.Changes.Count,
+            proposal.Changes.Select(change => change.RelativePath).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+    }
+
+    [Fact]
+    public void Compatibility_RespectsCentralPackageVersionOverride()
+    {
+        const string testedVersion = "0.4.0-preview.3557";
+        using var fixture = new OnboardingFixture();
+        File.WriteAllText(
+            fixture.ProjectPath,
+            File.ReadAllText(fixture.ProjectPath).Replace(
+                $"Version=\"{testedVersion}\"",
+                "VersionOverride=\"0.4.0-preview.2897\"",
+                StringComparison.Ordinal));
+        var centralPath = Path.Combine(fixture.Root, "Directory.Packages.props");
+        File.WriteAllText(
+            centralPath,
+            $$"""
+            <Project>
+              <PropertyGroup>
+                <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+              </PropertyGroup>
+              <ItemGroup>
+                <PackageVersion Include="StereoKit" Version="{{testedVersion}}" />
+              </ItemGroup>
+            </Project>
+            """ + Environment.NewLine);
+        var analysis = new ExistingStereoKitProjectAnalyzer(testedVersion).Analyze(fixture.ProjectPath);
+
+        var proposal = fixture.CreateBuilder(testedVersion).Create(
+            analysis,
+            OnboardingIntegrationShape.DirectOptIn,
+            alignStereoKitVersion: true);
+
+        Assert.Equal(
+            StereoKitProjectCompatibility.UpgradeRequired,
+            analysis.StereoKitCompatibility?.Compatibility);
+        var projectChange = Assert.Single(proposal.Changes, change => string.Equals(
+            change.RelativePath,
+            "Fixture.csproj",
+            StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            $"VersionOverride=\"{testedVersion}\"",
+            projectChange.ProposedText,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Analysis_UnsupportedProjectProducesUsefulReportWithoutWriting()
     {
         using var fixture = new OnboardingFixture(includeStereoKit: false);
@@ -855,8 +1185,8 @@ public sealed class ProjectOnboardingTests
         public string ProjectPath { get; }
         public string SdkDirectory { get; }
 
-        public OnboardingProposalBuilder CreateBuilder() =>
-            new("0.3.0-preview.1", SdkDirectory);
+        public OnboardingProposalBuilder CreateBuilder(string? testedStereoKitVersion = null) =>
+            new("0.3.0-preview.1", SdkDirectory, testedStereoKitVersion);
 
         public IReadOnlyDictionary<string, string> Snapshot() => Directory
             .EnumerateFiles(Root, "*", SearchOption.AllDirectories)
